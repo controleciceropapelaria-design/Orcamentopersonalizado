@@ -222,62 +222,64 @@ def calcular_capa(produto, papel, impressao, quantidade):
         ultima = df_tabela_impressao.iloc[-1]
         return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
 
-    # ✅ 2. DIGITAL
-    if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
-        # Extrair dimensões do papel (ex: "Offset 75g/m2 66x96")
-        match = re.search(r'(\d+)[x,\.]\s*(\d+)', papel)
-        if not match:
-            st.warning(f"⚠️ Não foi possível extrair dimensões do papel: {papel}")
-            return None
-        papel_l = float(match.group(1).replace(',', '.'))
-        papel_a = float(match.group(2).replace(',', '.'))
-        if papel_l < papel_a:
-            papel_l, papel_a = papel_a, papel_l  # Garantir L >= A
+    ## ✅ 2. DIGITAL
+        if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
+            # Extrair dimensões do papel (ex: "Couche Brilho 170G/M2 76X112")
+            # Remove caracteres problemáticos e padroniza
+            papel_clean = re.sub(r'g[/]?m2|gsm|g/m²', '', papel, flags=re.IGNORECASE)
+            papel_clean = re.sub(r'\s+', ' ', papel_clean).strip()
 
-        # Definir formato útil da máquina digital
-        if "17X24" in base or "20X28" in base:
-            util_l, util_a = 56, 33  # Formato 56x33
-        else:
-            util_l, util_a = 47, 33  # Formato 47x33
+            # Procurar qualquer par de números seguidos de X (ou x, ou ×)
+            match = re.search(r'(\d+)\s*[xX×]\s*(\d+)', papel_clean)
+            if not match:
+                st.warning(f"⚠️ Não foi possível extrair dimensões do papel: {papel}")
+                return None
 
-        # Dimensões da capa aberta
-        larg_capa, alt_capa = capa['larg'], capa['alt']
+            papel_l = float(match.group(1))
+            papel_a = float(match.group(2))
 
-        # Função para calcular máximo de capas por folha útil (47x33 ou 56x33)
-        def max_por_folha_util(folha_l, folha_a, peca_l, peca_a):
-            h1 = (folha_l // peca_l) * (folha_a // peca_a)  # Sem rotação
-            h2 = (folha_l // peca_a) * (folha_a // peca_l)  # Com rotação
-            return max(h1, h2) if h1 > 0 or h2 > 0 else 0
+            # Garantir que L >= A
+            if papel_l < papel_a:
+                papel_l, papel_a = papel_a, papel_l
 
-        # Quantas capas cabem em uma folha útil (47x33 ou 56x33)?
-        capas_por_folha_util = max_por_folha_util(util_l, util_a, larg_capa, alt_capa)
-        if capas_por_folha_util == 0:
-            st.warning(f"⚠️ Capa muito grande para o formato útil {util_l}x{util_a}: {larg_capa}x{alt_capa}")
-            return None
+            # Definir formato útil da máquina digital
+            if "17X24" in base or "20X28" in base:
+                util_l, util_a = 56, 33  # Formato 56x33
+            else:
+                util_l, util_a = 47, 33  # Formato 47x33
 
-        # Quantas folhas úteis (47x33) são necessárias?
-        folhas_uteis_necessarias = int(np.ceil(quantidade / capas_por_folha_util))
+            # Dimensões da capa aberta
+            larg_capa, alt_capa = capa['larg'], capa['alt']
 
-        # Quantas folhas úteis cabem no papel (ex: 66x96)?
-        pecas_h = int(papel_l // util_l)
-        pecas_v = int(papel_a // util_a)
-        total_pecas_por_folha_papel = pecas_h * pecas_v
+            # Função para calcular máximo de capas por folha útil (47x33 ou 56x33)
+            def max_por_folha_util(folha_l, folha_a, peca_l, peca_a):
+                h1 = (folha_l // peca_l) * (folha_a // peca_a)  # Sem rotação
+                h2 = (folha_l // peca_a) * (folha_a // peca_l)  # Com rotação
+                return max(h1, h2) if h1 > 0 or h2 > 0 else 0
 
-        if total_pecas_por_folha_papel == 0:
-            st.warning(f"⚠️ Formato útil {util_l}x{util_a} não cabe no papel {papel_l}x{papel_a}")
-            return None
+            # Quantas capas cabem em uma folha útil (47x33 ou 56x33)?
+            capas_por_folha_util = max_por_folha_util(util_l, util_a, larg_capa, alt_capa)
+            if capas_por_folha_util == 0:
+                st.warning(f"⚠️ Capa muito grande para o formato útil {util_l}x{util_a}: {larg_capa}x{alt_capa}")
+                return None
 
-        # Quantidade final de folhas do papel (ex: 66x96)
-        folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas_por_folha_papel))
+            # Quantas folhas úteis (47x33) são necessárias?
+            folhas_uteis_necessarias = int(np.ceil(quantidade / capas_por_folha_util))
 
-        # ✅ Depuração segura: só executa dentro do bloco
-        st.write(f"🔧 Digital: {base} → Capa {larg_capa}x{alt_capa} → Util {util_l}x{util_a} → Papel {papel_l}x{papel_a}")
-        st.write(f"Capas por folha útil: {capas_por_folha_util}")
-        st.write(f"Folhas úteis necessárias: {folhas_uteis_necessarias}")
-        st.write(f"Pedaços por folha papel: {total_pecas_por_folha_papel} → Folhas papel: {folhas_papel}")
+            # Quantas folhas úteis cabem no papel (ex: 76x112)?
+            pecas_h = int(papel_l // util_l)
+            pecas_v = int(papel_a // util_a)
+            total_pecas_por_folha_papel = pecas_h * pecas_v
 
-        return {"tipo": "digital", "folhas": folhas_papel, "m2": None}
+            if total_pecas_por_folha_papel == 0:
+                st.warning(f"⚠️ Formato útil {util_l}x{util_a} não cabe no papel {papel_l}x{papel_a}")
+                return None
 
+            # Quantidade final de folhas do papel (ex: 76x112)
+            folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas_por_folha_papel))
+
+            return {"tipo": "digital", "folhas": folhas_papel, "m2": None}
+        
     # ✅ 3. COURO SINTÉTICO
     if acabamento == "COURO":
         facas = {
