@@ -11,22 +11,6 @@ URL_USO_PAPEL_DIVISORIA = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_o
 URL_USO_PAPEL_ADESIVO = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcamento/main/usodepapeladesivo.csv"
 URL_TABELA_IMPRESSAO = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/ccff6ceeb6416b82c73928052f2aba3eea6ab3a7/tabelaimpressao.csv"
 
-# ================== TABELA DE PREÇOS DIGITAL (unitário por folha) ==================
-PRECO_DIGITAL = {
-    '47x33': {
-        '4/0': 1.16,
-        '4/1': 1.40,
-        '1/0': 0.24,
-        '1/1': 0.48
-    },
-    '56x33': {
-        '4/0': 2.32,
-        '4/1': 2.80,
-        '1/0': 0.48,
-        '1/1': 0.96
-    }
-}
-
 # ================== CONFIGURAÇÃO DA PÁGINA ==================
 st.set_page_config(page_title="📦 Cálculo de Custo", layout="centered")
 st.title("📐 Análise de Custo: Miolo + Bolsa + Divisória + Adesivo + Capa")
@@ -101,44 +85,17 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            # Forçar leitura com encoding UTF-8 e tratamento de coluna
-            df_tabela_impressao = pd.read_csv(
-                URL_TABELA_IMPRESSAO,
-                encoding='utf-8',
-                sep=',',
-                skipinitialspace=True,
-                dtype=str,
-                skip_blank_lines=True,
-                engine='python'
-            )
-
-            # Remover colunas totalmente vazias
+            df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8', skipinitialspace=True)
+            # Remover colunas vazias
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-
-            # Verificar se tem pelo menos 9 colunas
-            if df_tabela_impressao.shape[1] < 9:
-                st.error(f"❌ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
-                st.write("Colunas encontradas:", df_tabela_impressao.columns.tolist())
-                df_tabela_impressao = pd.DataFrame()
-            else:
-                # Renomear colunas manualmente (ignorando o nome original da primeira)
-                df_tabela_impressao.columns = [
-                    'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
-                ] + [f"Extra_{i}" for i in range(df_tabela_impressao.shape[1] - 9)]
-
-                # Converter colunas numéricas
-                df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
-                df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
-                df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
-
-                # Remover linhas inválidas
-                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
-
-                st.success("✅ Tabela de impressão carregada com sucesso!")
-
+            # Renomear colunas conforme estrutura real
+            df_tabela_impressao.columns = [
+                'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
+            ]
+            df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro']).reset_index(drop=True)
         except Exception as e:
-            st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
-            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
+            st.warning(f"⚠️ Erro ao carregar tabela de impressão: {e}")
             df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
@@ -241,39 +198,29 @@ def calcular_capa(produto, papel, impressao, quantidade):
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
         formato_map = {
-            'CADERNETA 9X13': '9x13', 'CADERNETA 14X21': '14x21', 'REVISTA 9X13': '9x13',
-            'REVISTA 14X21': '14x21', 'PLANNER WIRE-O A5': 'A5', 'FICHARIO 17X24': '17x24',
-            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '9x13',
-            'FICHARIO A5': 'A5', 'CADERNO WIRE-O 17X24': '17x24', 'CADERNO ORGANIZADOR A5': 'A5',
-            'CADERNO ORGANIZADOR 17X24': '17x24', 'FICHARIO A6': 'A5'
+            'CADERNETA 9X13': '9x13',
+            'CADERNETA 14X21': '14x21',
+            'REVISTA 9X13': '9x13',
+            'REVISTA 14X21': '14x21',
+            'PLANNER WIRE-O A5': 'A5',
+            'FICHARIO 17X24': '17x24',
+            'REVISTA 19X25': '19x25',
+            'CADERNO WIRE-O 20X28': '20x28',
+            'BLOCO WIRE-O 12X20': '9x13',
+            'FICHARIO A5': 'A5',
+            'CADERNO WIRE-O 17X24': '17x24',
+            'CADERNO ORGANIZADOR A5': 'A5',
+            'CADERNO ORGANIZADOR 17X24': '17x24',
+            'FICHARIO A6': 'A5'
         }
         coluna = formato_map.get(base)
         if not coluna or coluna not in df_tabela_impressao.columns:
-            st.warning(f"⚠️ Coluna não encontrada para {base}: {coluna}")
             return None
-
-        # Verificar se a tabela está vazia
-        if df_tabela_impressao.empty:
-            st.warning("⚠️ Tabela de impressão está vazia após conversão.")
-            return None
-
-        # Buscar a primeira faixa onde LÂMINAS (Milheiro) >= quantidade
         for _, row in df_tabela_impressao.iterrows():
             if quantidade <= row['Milheiro']:
-                folhas = int(row['QtdFolhas'])
-                valor_ml = row['ValorML']
-                custo_total = folhas * valor_ml
-                return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": round(custo_total, 2)}
-
-        # Se não encontrou, usa a última faixa
-        if len(df_tabela_impressao) > 0:
-            ultima = df_tabela_impressao.iloc[-1]
-            folhas = int(ultima['QtdFolhas'])
-            custo_total = folhas * ultima['ValorML']
-            return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": round(custo_total, 2)}
-        else:
-            st.error("❌ Nenhuma faixa válida encontrada na tabela de impressão.")
-            return None
+                return {"tipo": "offset", "folhas": int(row['QtdFolhas']), "m2": None}
+        ultima = df_tabela_impressao.iloc[-1]
+        return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
 
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
@@ -282,31 +229,14 @@ def calcular_capa(produto, papel, impressao, quantidade):
         papel_l = float(match.group(1).replace(',', '.'))
         papel_a = float(match.group(2).replace(',', '.'))
         if papel_l < papel_a: papel_l, papel_a = papel_a, papel_l
-
-        if "17X24" in base or "20X28" in base:
-            util_l, util_a = 56, 33
-            formato_preco = '56x33'
-        else:
-            util_l, util_a = 47, 33
-            formato_preco = '47x33'
-
-        tipo_impressao = None
-        for tipo in ['4/0', '4/1', '1/0', '1/1']:
-            if tipo in impressao:
-                tipo_impressao = tipo
-                break
-        if not tipo_impressao:
-            return None
-
-        preco_unitario = PRECO_DIGITAL[formato_preco][tipo_impressao]
+        util_l, util_a = (56, 33) if "17X24" in base or "20X28" in base else (47, 33)
         pecas_h = papel_l // util_l
         pecas_v = papel_a // util_a
         total_pecas = pecas_h * pecas_v
         capas_por_peca = max_por_folha(util_l, util_a, larg_capa, alt_capa)
         capas_por_folha = total_pecas * capas_por_peca
         folhas = int(np.ceil(quantidade / capas_por_folha))
-        custo_total = folhas * preco_unitario
-        return {"tipo": "digital", "folhas": folhas, "m2": None, "custo_total": round(custo_total, 2)}
+        return {"tipo": "digital", "folhas": folhas, "m2": None}
 
     # ✅ 3. COURO SINTÉTICO
     if acabamento == "COURO":
@@ -324,7 +254,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
         if capas_por_tira == 0: return None
         qtd_tiras = np.ceil((quantidade + 5) / capas_por_tira)
         m2_total = qtd_tiras * (altura_faca / 100) * 1.3
-        return {"tipo": "couro", "folhas": None, "m2": round(m2_total, 2), "custo_total": None}
+        return {"tipo": "couro", "folhas": None, "m2": round(m2_total, 2)}
 
     return None
 
@@ -352,7 +282,7 @@ if not produto_selecionado:
     st.stop()
 
 # === Capa ===
-st.markdown("### 📘 Capa")
+st.markdown("📘 Capa")
 col1, col2, col3 = st.columns(3)
 
 # Papel da capa
@@ -379,7 +309,7 @@ if col3.button("🧮 Calcular Capa"):
         else:
             st.error("Erro no cálculo da capa.")
 
-# ================== INTERFACE DO USUÁRIO ==================
+# ================== INTERFACE DO USUÁRIO (miolo, bolsa, etc) ==================
 st.markdown("Selecione um **miolo**, uma **bolsa**, uma **divisória**, um **adesivo** ou use a opção personalizada.")
 # === Miolo ===
 miolos = sorted(df_miolos['Miolo'].dropna().unique())
@@ -470,21 +400,13 @@ if 'capa_resultado' in st.session_state:
         st.markdown("**Capa**")
         valor = st.session_state.capa_resultado
         tipo = valor['tipo']
-        if tipo == "couro":
-            texto = f"{valor['m2']} m²"
-        else:
-            texto = f"{valor['folhas']} folhas"
+        texto = f"{valor['folhas']} folhas" if tipo != "couro" else f"{valor['m2']} m²"
         st.metric("Consumo", texto)
-        if valor['custo_total'] is not None:
-            st.metric("Custo Total", f"R$ {valor['custo_total']:,.2f}".replace('.', ','))
         with st.expander("Detalhes"):
             st.markdown(f"**Produto:** {produto_selecionado}")
             st.markdown(f"**Papel:** {st.session_state.papel_capa}")
             if tipo != "couro":
                 st.markdown(f"**Impressão:** {st.session_state.impressao_capa}")
-                st.markdown(f"**Custo total da impressão:** R$ {valor['custo_total']:,.2f}".replace('.', ','))
-            else:
-                st.markdown(f"**Consumo:** {valor['m2']} m²")
 
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
@@ -572,13 +494,10 @@ st.subheader("💰 Custo Total Unitário do Produto")
 custo_total = 0.0
 itens = []
 
-# Capa
-if 'capa_resultado' in st.session_state and st.session_state.capa_resultado['custo_total'] is not None:
-    custo_capa = st.session_state.capa_resultado['custo_total'] / quantidade_orcamento
-    custo_total += custo_capa
+if 'capa_resultado' in st.session_state:
+    custo_total += 0  # Aqui você pode adicionar custo real da capa depois
     itens.append("Capa")
 
-# Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
     custo_total += custo_miolo[0]
     itens.append("Miolo")
@@ -586,7 +505,6 @@ elif miolo_selecionado == "Personalizado" and custo_miolo:
     custo_total += custo_miolo[0]
     itens.append("Miolo (Pers.)")
 
-# Bolsa
 if bolsa_selecionada != "Personalizado" and custo_bolsa:
     custo_total += custo_bolsa[0]
     itens.append("Bolsa")
@@ -594,7 +512,6 @@ elif bolsa_selecionada == "Personalizado" and custo_bolsa:
     custo_total += custo_bolsa[0]
     itens.append("Bolsa (Pers.)")
 
-# Divisória
 if divisoria_selecionada != "Personalizado" and custo_divisoria:
     custo_total += custo_divisoria[0]
     itens.append("Divisória")
@@ -602,7 +519,6 @@ elif divisoria_selecionada == "Personalizado" and custo_divisoria:
     custo_total += custo_divisoria[0]
     itens.append("Divisória (Pers.)")
 
-# Adesivo
 if adesivo_selecionado != "Personalizado" and custo_adesivo:
     custo_total += custo_adesivo[0]
     itens.append("Adesivo")
