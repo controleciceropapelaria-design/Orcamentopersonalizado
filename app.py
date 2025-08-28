@@ -224,19 +224,50 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
+        # Extrair dimensões do papel (ex: "Offset 75g/m2 66x96")
         match = re.search(r'(\d+)[x,\.]\s*(\d+)', papel)
-        if not match: return None
+        if not match:
+            return None
         papel_l = float(match.group(1).replace(',', '.'))
         papel_a = float(match.group(2).replace(',', '.'))
-        if papel_l < papel_a: papel_l, papel_a = papel_a, papel_l
-        util_l, util_a = (56, 33) if "17X24" in base or "20X28" in base else (47, 33)
+        if papel_l < papel_a:
+            papel_l, papel_a = papel_a, papel_l  # Garantir que L >= A
+
+        # Definir o formato útil da máquina digital
+        if "17X24" in base or "20X28" in base:
+            util_l, util_a = 56, 33  # Formato 56x33
+        else:
+            util_l, util_a = 47, 33  # Formato 47x33
+
+        # Dimensões da capa aberta
+        larg_capa, alt_capa = capa['larg'], capa['alt']
+
+        # Função para calcular máximo de capas por folha útil (47x33 ou 56x33)
+        def max_por_folha_util(folha_l, folha_a, peca_l, peca_a):
+            h1 = (folha_l // peca_l) * (folha_a // peca_a)  # Horizontal
+            h2 = (folha_l // peca_a) * (folha_a // peca_l)  # Rotacionado
+            return max(h1, h2) if h1 > 0 or h2 > 0 else 0
+
+        # Quantidade de capas por folha útil (47x33 ou 56x33)
+        capas_por_folha_util = max_por_folha_util(util_l, util_a, larg_capa, alt_capa)
+        if capas_por_folha_util == 0:
+            return None  # Não cabe
+
+        # Quantidade de folhas úteis necessárias
+        folhas_uteis_necessarias = int(np.ceil(quantidade / capas_por_folha_util))
+
+        # Agora: quantas folhas úteis cabem no papel escolhido (ex: 66x96)?
         pecas_h = papel_l // util_l
         pecas_v = papel_a // util_a
-        total_pecas = pecas_h * pecas_v
-        capas_por_peca = max_por_folha(util_l, util_a, larg_capa, alt_capa)
-        capas_por_folha = total_pecas * capas_por_peca
-        folhas = int(np.ceil(quantidade / capas_por_folha))
-        return {"tipo": "digital", "folhas": folhas, "m2": None}
+        total_pecas_por_folha_papel = pecas_h * pecas_v
+
+        if total_pecas_por_folha_papel == 0:
+            return None  # Não cabe
+
+        # Quantidade de folhas do papel (ex: 66x96)
+        folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas_por_folha_papel))
+
+        return {"tipo": "digital", "folhas": folhas_papel, "m2": None, "custo_total": None}
 
     # ✅ 3. COURO SINTÉTICO
     if acabamento == "COURO":
