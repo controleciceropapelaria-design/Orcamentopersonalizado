@@ -199,23 +199,50 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
+        # Mapeamento: base → índice da coluna na tabela (0-indexado)
         col_map = {
-            'CADERNETA 9X13': '9x13', 'CADERNETA 14X21': '14x21', 'REVISTA 9X13': '9x13',
-            'REVISTA 14X21': '14x21', 'PLANNER WIRE-O A5': 'A5', 'FICHARIO 17X24': '17x24',
-            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '9x13',
-            'FICHARIO A5': 'A5', 'CADERNO WIRE-O 17X24': '17x24', 'CADERNO ORGANIZADOR A5': 'A5',
-            'CADERNO ORGANIZADOR 17X24': '17x24', 'FICHARIO A6': 'A5'
+            'CADERNETA 9X13': 1,
+            'CADERNETA 14X21': 2,
+            'REVISTA 9X13': 1,
+            'REVISTA 14X21': 2,
+            'PLANNER WIRE-O A5': 3,
+            'FICHARIO 17X24': 4,
+            'REVISTA 19X25': 5,
+            'CADERNO WIRE-O 20X28': 6,
+            'BLOCO WIRE-O 12X20': 2,  # Usa mesma coluna que 14x21
+            'FICHARIO A5': 4,        # Usa 17x24
+            'CADERNO WIRE-O 17X24': 4,
+            'CADERNO ORGANIZADOR A5': 4,
+            'CADERNO ORGANIZADOR 17X24': 4,
+            'FICHARIO A6': 3
         }
-        coluna = col_map.get(base)
-        if not coluna or coluna not in df_tabela_impressao.columns:
+
+        col_index = col_map.get(base)
+        if col_index is None:
+            st.warning(f"⚠️ Formato não encontrado na tabela: {base}")
             return None
+
+        # Verificar se a tabela tem colunas suficientes
+        if df_tabela_impressao.shape[1] <= col_index:
+            st.error("❌ Tabela de impressão não tem coluna suficiente.")
+            return None
+
+        # Buscar a primeira linha onde o valor da coluna >= quantidade
         for _, row in df_tabela_impressao.iterrows():
-            if quantidade <= row['Milheiro']:
-                folhas = int(row['QtdFolhas'])
-                return {"tipo": "offset", "folhas": folhas, "m2": None}
+            capas_na_tabela = row.iloc[col_index]
+            if pd.notna(capas_na_tabela) and quantidade <= capas_na_tabela:
+                folhas = row['QtdFolhas']
+                if pd.notna(folhas):
+                    return {"tipo": "offset", "folhas": int(folhas), "m2": None}
+
+        # Se não encontrou, usa a última linha
         if len(df_tabela_impressao) > 0:
             ultima = df_tabela_impressao.iloc[-1]
-            return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
+            folhas = ultima['QtdFolhas']
+            if pd.notna(folhas):
+                return {"tipo": "offset", "folhas": int(folhas), "m2": None}
+
+        st.warning("⚠️ Nenhuma faixa de produção encontrada para a quantidade.")
         return None
 
     # ✅ 2. DIGITAL
