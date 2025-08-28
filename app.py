@@ -158,6 +158,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
     if not produto or not papel or not quantidade or quantidade <= 0:
         return None
 
+    # Extrair base e acabamento
     if "COURO SINTÉTICO" in produto:
         base = produto.replace(" - COURO SINTÉTICO", "").strip()
         acabamento = "COURO"
@@ -167,6 +168,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
     else:
         return None
 
+    # Dimensões abertas da capa
     formatos_abertos = {
         'CADERNETA 9X13': {'larg': 22, 'alt': 15.8},
         'CADERNETA 14X21': {'larg': 33.7, 'alt': 24.2},
@@ -187,9 +189,9 @@ def calcular_capa(produto, papel, impressao, quantidade):
     if base not in formatos_abertos:
         return None
 
-    capa = formatos_abertos[base]
-    larg_capa, alt_capa = capa['larg'], capa['alt']
+    larg_capa, alt_capa = formatos_abertos[base]['larg'], formatos_abertos[base]['alt']
 
+    # Função para calcular máximo de peças por folha
     def max_por_folha(folha_l, folha_a, peca_l, peca_a):
         h1 = (folha_l // peca_l) * (folha_a // peca_a)
         h2 = (folha_l // peca_a) * (folha_a // peca_l)
@@ -197,89 +199,61 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        formato_map = {
-            'CADERNETA 9X13': '9x13',
-            'CADERNETA 14X21': '14x21',
-            'REVISTA 9X13': '9x13',
-            'REVISTA 14X21': '14x21',
-            'PLANNER WIRE-O A5': 'A5',
-            'FICHARIO 17X24': '17x24',
-            'REVISTA 19X25': '19x25',
-            'CADERNO WIRE-O 20X28': '20x28',
-            'BLOCO WIRE-O 12X20': '9x13',
-            'FICHARIO A5': 'A5',
-            'CADERNO WIRE-O 17X24': '17x24',
-            'CADERNO ORGANIZADOR A5': 'A5',
-            'CADERNO ORGANIZADOR 17X24': '17x24',
-            'FICHARIO A6': 'A5'
+        col_map = {
+            'CADERNETA 9X13': '9x13', 'CADERNETA 14X21': '14x21', 'REVISTA 9X13': '9x13',
+            'REVISTA 14X21': '14x21', 'PLANNER WIRE-O A5': 'A5', 'FICHARIO 17X24': '17x24',
+            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '9x13',
+            'FICHARIO A5': 'A5', 'CADERNO WIRE-O 17X24': '17x24', 'CADERNO ORGANIZADOR A5': 'A5',
+            'CADERNO ORGANIZADOR 17X24': '17x24', 'FICHARIO A6': 'A5'
         }
-        coluna = formato_map.get(base)
+        coluna = col_map.get(base)
         if not coluna or coluna not in df_tabela_impressao.columns:
             return None
         for _, row in df_tabela_impressao.iterrows():
             if quantidade <= row['Milheiro']:
-                return {"tipo": "offset", "folhas": int(row['QtdFolhas']), "m2": None}
-        ultima = df_tabela_impressao.iloc[-1]
-        return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
+                folhas = int(row['QtdFolhas'])
+                return {"tipo": "offset", "folhas": folhas, "m2": None}
+        if len(df_tabela_impressao) > 0:
+            ultima = df_tabela_impressao.iloc[-1]
+            return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
+        return None
 
-    ## ✅ 2. DIGITAL
-        if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
-            # Extrair dimensões do papel (ex: "Couche Brilho 170G/M2 76X112")
-            # Remove caracteres problemáticos e padroniza
-            papel_clean = re.sub(r'g[/]?m2|gsm|g/m²', '', papel, flags=re.IGNORECASE)
-            papel_clean = re.sub(r'\s+', ' ', papel_clean).strip()
+    # ✅ 2. DIGITAL
+    if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
+        # Extrair dimensões do papel (ex: "Couche Brilho 170G/M2 76X112")
+        papel_clean = re.sub(r'g[/]?m2|gsm|g/m²', '', papel, flags=re.IGNORECASE)
+        papel_clean = re.sub(r'\s+', ' ', papel_clean).strip()
+        match = re.search(r'(\d+)\s*[xX×]\s*(\d+)', papel_clean)
+        if not match:
+            return None
+        papel_l = float(match.group(1))
+        papel_a = float(match.group(2))
+        if papel_l < papel_a:
+            papel_l, papel_a = papel_a, papel_l
 
-            # Procurar qualquer par de números seguidos de X (ou x, ou ×)
-            match = re.search(r'(\d+)\s*[xX×]\s*(\d+)', papel_clean)
-            if not match:
-                st.warning(f"⚠️ Não foi possível extrair dimensões do papel: {papel}")
-                return None
+        # Formato útil da máquina digital
+        if "17X24" in base or "20X28" in base:
+            util_l, util_a = 56, 33
+        else:
+            util_l, util_a = 47, 33
 
-            papel_l = float(match.group(1))
-            papel_a = float(match.group(2))
+        # Quantidade de pedaços por folha
+        pecas_h = int(papel_l // util_l)
+        pecas_v = int(papel_a // util_a)
+        total_pecas = pecas_h * pecas_v
+        if total_pecas == 0:
+            return None
 
-            # Garantir que L >= A
-            if papel_l < papel_a:
-                papel_l, papel_a = papel_a, papel_l
+        # Capas por pedaço (melhor encaixe)
+        capas_por_peca = max_por_folha(util_l, util_a, larg_capa, alt_capa)
+        if capas_por_peca == 0:
+            return None
 
-            # Definir formato útil da máquina digital
-            if "17X24" in base or "20X28" in base:
-                util_l, util_a = 56, 33  # Formato 56x33
-            else:
-                util_l, util_a = 47, 33  # Formato 47x33
+        # Capas por folha do papel
+        capas_por_folha = total_pecas * capas_por_peca
+        folhas = int(np.ceil(quantidade / capas_por_folha))
+        return {"tipo": "digital", "folhas": folhas, "m2": None}
 
-            # Dimensões da capa aberta
-            larg_capa, alt_capa = capa['larg'], capa['alt']
-
-            # Função para calcular máximo de capas por folha útil (47x33 ou 56x33)
-            def max_por_folha_util(folha_l, folha_a, peca_l, peca_a):
-                h1 = (folha_l // peca_l) * (folha_a // peca_a)  # Sem rotação
-                h2 = (folha_l // peca_a) * (folha_a // peca_l)  # Com rotação
-                return max(h1, h2) if h1 > 0 or h2 > 0 else 0
-
-            # Quantas capas cabem em uma folha útil (47x33 ou 56x33)?
-            capas_por_folha_util = max_por_folha_util(util_l, util_a, larg_capa, alt_capa)
-            if capas_por_folha_util == 0:
-                st.warning(f"⚠️ Capa muito grande para o formato útil {util_l}x{util_a}: {larg_capa}x{alt_capa}")
-                return None
-
-            # Quantas folhas úteis (47x33) são necessárias?
-            folhas_uteis_necessarias = int(np.ceil(quantidade / capas_por_folha_util))
-
-            # Quantas folhas úteis cabem no papel (ex: 76x112)?
-            pecas_h = int(papel_l // util_l)
-            pecas_v = int(papel_a // util_a)
-            total_pecas_por_folha_papel = pecas_h * pecas_v
-
-            if total_pecas_por_folha_papel == 0:
-                st.warning(f"⚠️ Formato útil {util_l}x{util_a} não cabe no papel {papel_l}x{papel_a}")
-                return None
-
-            # Quantidade final de folhas do papel (ex: 76x112)
-            folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas_por_folha_papel))
-
-            return {"tipo": "digital", "folhas": folhas_papel, "m2": None}
-        
     # ✅ 3. COURO SINTÉTICO
     if acabamento == "COURO":
         facas = {
@@ -290,10 +264,12 @@ def calcular_capa(produto, papel, impressao, quantidade):
             'CADERNO ORGANIZADOR 17X24': 53
         }
         altura_faca = facas.get(base)
-        if not altura_faca: return None
+        if not altura_faca:
+            return None
         tira_l, tira_a = 130, altura_faca
         capas_por_tira = max_por_folha(tira_l, tira_a, larg_capa, alt_capa)
-        if capas_por_tira == 0: return None
+        if capas_por_tira == 0:
+            return None
         qtd_tiras = np.ceil((quantidade + 5) / capas_por_tira)
         m2_total = qtd_tiras * (altura_faca / 100) * 1.3
         return {"tipo": "couro", "folhas": None, "m2": round(m2_total, 2)}
