@@ -85,36 +85,28 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            # Forçar leitura SEM cabeçalho, como uma matriz
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
-                header=None,           # ❌ Sem cabeçalho
                 skipinitialspace=True,
-                dtype=str              # Ler tudo como string
+                dtype=str
             )
-
-            # Remover colunas vazias
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-
-            # Manter apenas as 9 primeiras colunas
-            df_tabela_impressao = df_tabela_impressao.iloc[:, :9]
-
-            # Converter todas as colunas para número
-            for i in range(9):
-                df_tabela_impressao[i] = pd.to_numeric(df_tabela_impressao[i], errors='coerce')
-
-            # Remover linhas com LÂMINAS inválido (primeira coluna)
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=[0]).reset_index(drop=True)
-
-            st.success("✅ Tabela de impressão carregada com sucesso!")
-
+            if df_tabela_impressao.shape[1] < 9:
+                st.warning(f"⚠️ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
+                df_tabela_impressao = pd.DataFrame()
+            else:
+                df_tabela_impressao.columns = [
+                    'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
+                ]
+                df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
+                df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
+                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML']).reset_index(drop=True)
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
-            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
             df_tabela_impressao = pd.DataFrame()
-
+            
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
 
     except Exception as e:
@@ -214,57 +206,28 @@ def calcular_capa(produto, papel, impressao, quantidade):
         h2 = (folha_l // peca_a) * (folha_a // peca_l)
         return max(h1, h2) if h1 > 0 or h2 > 0 else 0
 
-    # ✅ 1. OFFSET
+     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → índice da coluna (0-indexed) - IGUAL AO APPS SCRIPT
-        col_map = {
-            'CADERNETA 9X13': 1,
-            'CADERNETA 14X21': 2,
-            'REVISTA 9X13': 1,
-            'REVISTA 14X21': 2,
-            'PLANNER WIRE-O A5': 3,
-            'FICHARIO 17X24': 4,
-            'REVISTA 19X25': 5,
-            'CADERNO WIRE-O 20X28': 6,
-            'BLOCO WIRE-O 12X20': 1,
-            'FICHARIO A5': 3,
-            'CADERNO WIRE-O 17X24': 4,
-            'CADERNO ORGANIZADOR A5': 3,
-            'CADERNO ORGANIZADOR 17X24': 4,
-            'FICHARIO A6': 3
+        formato_map = {
+            'CADERNETA 9X13': '9x13', 'CADERNETA 14X21': '14x21', 'REVISTA 9X13': '9x13',
+            'REVISTA 14X21': '14x21', 'PLANNER WIRE-O A5': 'A5', 'FICHARIO 17X24': '17x24',
+            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '14x21',
+            'FICHARIO A5': 'A5', 'CADERNO WIRE-O 17X24': '17x24', 'CADERNO ORGANIZADOR A5': 'A5',
+            'CADERNO ORGANIZADOR 17X24': '17x24', 'FICHARIO A6': 'A5'
         }
-
-        col_index = col_map.get(base)
-        if col_index is None:
-            st.warning(f"⚠️ Formato não encontrado na tabela: {base}")
+        coluna = formato_map.get(base)
+        if not coluna or coluna not in df_tabela_impressao.columns:
             return None
-
-        # Verificar se a tabela tem colunas suficientes
-        if df_tabela_impressao.shape[1] <= col_index:
-            st.error(f"❌ Tabela não tem a coluna {col_index + 1}. Tem apenas {df_tabela_impressao.shape[1]} colunas.")
-            return None
-
-        # DEBUG: Mostre os dados reais
-        # st.write("🔍 Debug - Tabela de impressão (sem cabeçalho):", df_tabela_impressao)
-
-        # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
-        for idx, row in df_tabela_impressao.iterrows():
-            valor_celula = row.iloc[col_index]
-            if pd.notna(valor_celula) and quantidade <= valor_celula:
-                folhas = row.iloc[8]  # 9ª coluna = QtdFolhas
-                if pd.notna(folhas):
-                    return {"tipo": "offset", "folhas": int(folhas), "m2": None}
-
-        # Se não encontrou, usa a última linha (fallback)
-        if len(df_tabela_impressao) > 0:
-            ultima = df_tabela_impressao.iloc[-1]
-            folhas = ultima.iloc[8]
-            if pd.notna(folhas):
-                st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(folhas)} folhas.")
-                return {"tipo": "offset", "folhas": int(folhas), "m2": None}
-
-        st.error("❌ Nenhuma faixa válida encontrada na tabela de impressão.")
-        return None
+        for _, row in df_tabela_impressao.iterrows():
+            if quantidade <= row['Milheiro']:
+                folhas = int(row['QtdFolhas'])
+                valor_ml = row['ValorML']
+                custo_total = folhas * valor_ml
+                return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
+        ultima = df_tabela_impressao.iloc[-1]
+        folhas = int(ultima['QtdFolhas'])
+        custo_total = folhas * ultima['ValorML']
+        return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
     
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
