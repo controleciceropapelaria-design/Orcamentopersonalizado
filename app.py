@@ -101,28 +101,41 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
+            # Forçar leitura com encoding UTF-8 e separador ,
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
                 skipinitialspace=True,
-                dtype=str
+                dtype=str  # Ler tudo como string primeiro
             )
-            # Remover colunas vazias
+
+            # Remover colunas vazias (NaN ou sem nome)
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-            if df_tabela_impressao.shape[1] < 9:
-                st.warning(f"⚠️ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
-                df_tabela_impressao = pd.DataFrame()
-            else:
+
+            # Renomear a primeira coluna de 'LÂMINAS' para 'Milheiro' (para uso interno)
+            if df_tabela_impressao.shape[1] >= 9:
                 df_tabela_impressao.columns = [
                     'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
-                ]
-                df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
-                df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
-                df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
-                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
+                ] + [f"Extra_{i}" for i in range(df_tabela_impressao.shape[1] - 9)]
+            else:
+                st.error(f"❌ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
+                df_tabela_impressao = pd.DataFrame()
+
+            # Converter colunas numéricas
+            df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
+            df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
+            df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
+
+            # Remover linhas inválidas
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
+
+            # ✅ Mensagem de sucesso
+            st.success("✅ Tabela de impressão carregada com sucesso!")
+
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
+            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
             df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
@@ -236,26 +249,27 @@ def calcular_capa(produto, papel, impressao, quantidade):
             st.warning(f"⚠️ Coluna não encontrada para {base}: {coluna}")
             return None
 
+        # Verificar se a tabela está vazia
         if df_tabela_impressao.empty:
-            st.warning("⚠️ Tabela de impressão está vazia.")
+            st.warning("⚠️ Tabela de impressão está vazia após conversão.")
             return None
 
-        # Buscar a primeira faixa de milheiro adequada
+        # Buscar a primeira faixa onde LÂMINAS (Milheiro) >= quantidade
         for _, row in df_tabela_impressao.iterrows():
-            if pd.notna(row['Milheiro']) and quantidade <= row['Milheiro']:
+            if quantidade <= row['Milheiro']:
                 folhas = int(row['QtdFolhas'])
                 valor_ml = row['ValorML']
                 custo_total = folhas * valor_ml
-                return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
+                return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": round(custo_total, 2)}
 
-        # Se não encontrou, usa o último (se existir)
+        # Se não encontrou, usa a última faixa
         if len(df_tabela_impressao) > 0:
             ultima = df_tabela_impressao.iloc[-1]
             folhas = int(ultima['QtdFolhas'])
             custo_total = folhas * ultima['ValorML']
-            return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
+            return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": round(custo_total, 2)}
         else:
-            st.warning("⚠️ Nenhuma faixa de milheiro disponível.")
+            st.error("❌ Nenhuma faixa válida encontrada na tabela de impressão.")
             return None
 
     # ✅ 2. DIGITAL
