@@ -240,22 +240,28 @@ def calcular_capa(produto, papel, impressao, quantidade):
             return None
 
         try:
+            # Carregar CSV: LAMINAS = capacidade de produção
             df_formato = pd.read_csv(url_csv, encoding='utf-8')
-            df_formato['Capacidade'] = pd.to_numeric(df_formato['Capacidade'], errors='coerce')
+            df_formato['LAMINAS'] = pd.to_numeric(df_formato['LAMINAS'], errors='coerce')
             df_formato['QtdFolhas'] = pd.to_numeric(df_formato['QtdFolhas'], errors='coerce')
-            df_formato = df_formato.dropna(subset=['Capacidade', 'QtdFolhas']).reset_index(drop=True)
+            df_formato = df_formato.dropna(subset=['LAMINAS', 'QtdFolhas']).reset_index(drop=True)
+
+            # Ordenar por LAMINAS (crescente)
+            df_formato = df_formato.sort_values('LAMINAS')
+
         except Exception as e:
             st.error(f"❌ Erro ao carregar CSV: {e}")
             return None
 
-        # Buscar a primeira linha onde Capacidade >= quantidade
+        # Buscar a primeira linha onde LAMINAS >= quantidade
         for _, row in df_formato.iterrows():
-            if quantidade <= row['Capacidade']:
+            if quantidade <= row['LAMINAS']:
                 return {"tipo": "offset", "folhas": int(row['QtdFolhas']), "m2": None}
 
         # Se não encontrou, usa a última linha
         if len(df_formato) > 0:
             ultima = df_formato.iloc[-1]
+            st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(ultima['QtdFolhas'])} folhas.")
             return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
 
         st.error("❌ Nenhuma faixa válida encontrada no CSV.")
