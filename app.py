@@ -86,13 +86,27 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8')
-            df_tabela_impressao.columns = ['Milheiro', 'Caderneta9x13', 'Caderneta14x21', 'PlannerA5',
-                                           'Fichario17x24', 'Revista19x25', 'Caderno20x28', 'Folhas']
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro'])
-        except Exception as e:
-            st.warning(f"⚠️ Erro ao carregar tabela de impressão: {e}")
-            df_tabela_impressao = pd.DataFrame()
+        df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8', skipinitialspace=True)
+        
+        # Remover colunas completamente vazias
+        df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
+        
+        # Renomear colunas com base na estrutura real
+        df_tabela_impressao.columns = [
+            'Laminas', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
+        ]
+        
+        # Converter 'Laminas' para número
+        df_tabela_impressao['Laminas'] = pd.to_numeric(df_tabela_impressao['Laminas'], errors='coerce')
+        
+        # Remover linhas com Laminas inválido
+        df_tabela_impressao = df_tabela_impressao.dropna(subset=['Laminas']).reset_index(drop=True)
+        
+        st.success("✅ Tabela de impressão carregada com sucesso!")
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
+        df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
 
@@ -191,30 +205,40 @@ def calcular_capa(produto, papel, impressao, quantidade):
         h2 = (folha_l // peca_a) * (folha_a // peca_l)
         return max(h1, h2) if h1 > 0 or h2 > 0 else 0
 
-    # ✅ 1. OFFSET
+    # ✅ 1. CÁLCULO PARA OFFSET (TABELA DE MILHEIRO)
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        col_map = {
-            'CADERNETA 9X13': 'Caderneta9x13',
-            'CADERNETA 14X21': 'Caderneta14x21',
-            'PLANNER WIRE-O A5': 'PlannerA5',
-            'FICHARIO 17X24': 'Fichario17x24',
-            'REVISTA 19X25': 'Revista19x25',
-            'CADERNO WIRE-O 20X28': 'Caderno20x28',
-            'BLOCO WIRE-O 12X20': 'Caderneta9x13',
-            'FICHARIO A5': 'Fichario17x24',
-            'CADERNO WIRE-O 17X24': 'Fichario17x24',
-            'CADERNO ORGANIZADOR A5': 'PlannerA5',
-            'CADERNO ORGANIZADOR 17X24': 'Fichario17x24',
-            'FICHARIO A6': 'PlannerA5'
+        # Mapeamento do produto → coluna no CSV
+        formato_map = {
+            'CADERNETA 9X13': '9x13',
+            'CADERNETA 14X21': '14x21',
+            'REVISTA 9X13': '9x13',
+            'REVISTA 14X21': '14x21',
+            'PLANNER WIRE-O A5': 'A5',
+            'FICHARIO 17X24': '17x24',
+            'REVISTA 19X25': '19x25',
+            'CADERNO WIRE-O 20X28': '20x28',
+            'BLOCO WIRE-O 12X20': '14x21',  # Aproveitamento igual à 14x21
+            'FICHARIO A5': 'A5',
+            'CADERNO WIRE-O 17X24': '17x24',
+            'CADERNO ORGANIZADOR A5': 'A5',
+            'CADERNO ORGANIZADOR 17X24': '17x24',
+            'FICHARIO A6': 'A5'
         }
-        coluna = col_map.get(base)
-        if not coluna or coluna not in df_tabela_impressao.columns:
+        
+        coluna_formato = formato_map.get(base)
+        if not coluna_formato or coluna_formato not in df_tabela_impressao.columns:
+            st.warning(f"⚠️ Formato não encontrado na tabela: {coluna_formato}")
             return None
+
+        # Buscar a linha onde Milheiro >= quantidade
         for _, row in df_tabela_impressao.iterrows():
             if quantidade <= row['Milheiro']:
-                return {"tipo": "offset", "folhas": int(row['Folhas']), "m2": None}
-        ultima = df_tabela_impressao.iloc[-1]
-        return {"tipo": "offset", "folhas": int(ultima['Folhas']), "m2": None}
+                folhas = row['QtdFolhas']
+                return {"tipo": "offset", "folhas": int(folhas), "m2": None}
+    
+    # Se ultrapassar todos, usa o último
+    ultima = df_tabela_impressao.iloc[-1]
+    return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
 
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
