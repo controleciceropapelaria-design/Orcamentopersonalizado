@@ -85,12 +85,12 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            # Forçar leitura SEM cabeçalho, como uma matriz de valores
+            # Forçar leitura SEM cabeçalho, como uma matriz
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
-                header=None,           # ❌ NENHUM cabeçalho
+                header=None,           # ❌ Sem cabeçalho
                 skipinitialspace=True,
                 dtype=str              # Ler tudo como string
             )
@@ -216,7 +216,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → índice da coluna (0-indexed)
+        # Mapeamento: base → índice da coluna (0-indexed) - IGUAL AO APPS SCRIPT
         col_map = {
             'CADERNETA 9X13': 1,
             'CADERNETA 14X21': 2,
@@ -245,8 +245,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
             return None
 
         # DEBUG: Mostre os dados reais
-        # st.write("🔍 Debug - Tabela de impressão (sem cabeçalho):")
-        # st.write(df_tabela_impressao)
+        # st.write("🔍 Debug - Tabela de impressão (sem cabeçalho):", df_tabela_impressao)
 
         # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
         for idx, row in df_tabela_impressao.iterrows():
