@@ -216,50 +216,49 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → índice da coluna (0-indexed)
-        col_map = {
-            'CADERNETA 9X13': 1,
-            'CADERNETA 14X21': 2,
-            'REVISTA 9X13': 1,
-            'REVISTA 14X21': 2,
-            'PLANNER WIRE-O A5': 3,
-            'FICHARIO 17X24': 4,
-            'REVISTA 19X25': 5,
-            'CADERNO WIRE-O 20X28': 6,
-            'BLOCO WIRE-O 12X20': 1,
-            'FICHARIO A5': 3,
-            'CADERNO WIRE-O 17X24': 4,
-            'CADERNO ORGANIZADOR A5': 3,
-            'CADERNO ORGANIZADOR 17X24': 4,
-            'FICHARIO A6': 3
+        # Mapeamento: base → URL do CSV específico
+        csv_map = {
+            'CADERNETA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
+            'CADERNETA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
+            'REVISTA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
+            'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
+            'PLANNER WIRE-O A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv',
+            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'FICHARIO 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'REVISTA 19X25': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao19x25.csv',
+            'CADERNO WIRE-O 20X28': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao20x28.csv',
+            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
+            'CADERNO WIRE-O 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'CADERNO ORGANIZADOR 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'FICHARIO A6': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv'
         }
 
-        col_index = col_map.get(base)
-        if col_index is None:
-            st.warning(f"⚠️ Formato não encontrado na tabela: {base}")
+        url_csv = csv_map.get(base)
+        if not url_csv:
+            st.warning(f"⚠️ CSV não encontrado para: {base}")
             return None
 
-        if df_tabela_impressao.shape[1] <= col_index:
-            st.error(f"❌ Tabela não tem a coluna {col_index + 1}.")
+        try:
+            df_formato = pd.read_csv(url_csv, encoding='utf-8')
+            df_formato['Capacidade'] = pd.to_numeric(df_formato['Capacidade'], errors='coerce')
+            df_formato['QtdFolhas'] = pd.to_numeric(df_formato['QtdFolhas'], errors='coerce')
+            df_formato = df_formato.dropna(subset=['Capacidade', 'QtdFolhas']).reset_index(drop=True)
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar CSV: {e}")
             return None
 
-        # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
-        for idx, row in df_tabela_impressao.iterrows():
-            valor_celula = row.iloc[col_index]
-            if pd.notna(valor_celula) and quantidade <= valor_celula:
-                folhas = row.iloc[8]  # 9ª coluna = QtdFolhas
-                if pd.notna(folhas):
-                    return {"tipo": "offset", "folhas": int(folhas), "m2": None}
+        # Buscar a primeira linha onde Capacidade >= quantidade
+        for _, row in df_formato.iterrows():
+            if quantidade <= row['Capacidade']:
+                return {"tipo": "offset", "folhas": int(row['QtdFolhas']), "m2": None}
 
         # Se não encontrou, usa a última linha
-        if len(df_tabela_impressao) > 0:
-            ultima = df_tabela_impressao.iloc[-1]
-            folhas = ultima.iloc[8]
-            if pd.notna(folhas):
-                st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(folhas)} folhas.")
-                return {"tipo": "offset", "folhas": int(folhas), "m2": None}
+        if len(df_formato) > 0:
+            ultima = df_formato.iloc[-1]
+            return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
 
-        st.error("❌ Nenhuma faixa válida encontrada na tabela de impressão.")
+        st.error("❌ Nenhuma faixa válida encontrada no CSV.")
         return None
     
     # ✅ 2. DIGITAL
