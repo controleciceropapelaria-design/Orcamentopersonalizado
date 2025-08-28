@@ -227,10 +227,6 @@ def calcular_capa(produto, papel, impressao, quantidade):
         # Extrair dimensões do papel (ex: "Offset 75g/m2 66x96")
         match = re.search(r'(\d+)[x,\.]\s*(\d+)', papel)
         if not match:
-            st.write(f"🔧 Debug - Digital: {larg_capa}x{alt_capa} → {util_l}x{util_a} → {papel_l}x{papel_a}")
-            st.write(f"Capas por folha útil: {capas_por_folha_util}")
-            st.write(f"Folhas úteis necessárias: {folhas_uteis_necessarias}")
-            st.write(f"Pedaços por folha papel: {total_pecas_por_folha_papel}")
             st.warning(f"⚠️ Não foi possível extrair dimensões do papel: {papel}")
             return None
         papel_l = float(match.group(1).replace(',', '.'))
@@ -273,6 +269,12 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
         # Quantidade final de folhas do papel (ex: 66x96)
         folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas_por_folha_papel))
+
+        # ✅ Depuração segura: só executa dentro do bloco
+        st.write(f"🔧 Digital: {base} → Capa {larg_capa}x{alt_capa} → Util {util_l}x{util_a} → Papel {papel_l}x{papel_a}")
+        st.write(f"Capas por folha útil: {capas_por_folha_util}")
+        st.write(f"Folhas úteis necessárias: {folhas_uteis_necessarias}")
+        st.write(f"Pedaços por folha papel: {total_pecas_por_folha_papel} → Folhas papel: {folhas_papel}")
 
         return {"tipo": "digital", "folhas": folhas_papel, "m2": None}
 
