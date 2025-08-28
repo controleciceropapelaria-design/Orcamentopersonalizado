@@ -199,33 +199,50 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → coluna da tabela
-        formato_map = {
-            'CADERNETA 9X13': '9x13',
-            'CADERNETA 14X21': '14x21',
-            'REVISTA 9X13': '9x13',
-            'REVISTA 14X21': '14x21',
-            'PLANNER WIRE-O A5': 'A5',
-            'FICHARIO A5': 'A5',
-            'FICHARIO 17X24': '17x24',
-            'REVISTA 19X25': '19x25',
-            'CADERNO WIRE-O 20X28': '20x28',
-            'BLOCO WIRE-O 12X20': '9x13',
-            'CADERNO WIRE-O 17X24': '17x24',
-            'CADERNO ORGANIZADOR A5': 'A5',
-            'CADERNO ORGANIZADOR 17X24': '17x24',
-            'FICHARIO A6': 'A5'
+        # Mapeamento: base → índice da coluna (0-indexado)
+        col_map = {
+            'CADERNETA 9X13': 1,
+            'CADERNETA 14X21': 2,
+            'REVISTA 9X13': 1,
+            'REVISTA 14X21': 2,
+            'PLANNER WIRE-O A5': 3,
+            'FICHARIO 17X24': 4,
+            'REVISTA 19X25': 5,
+            'CADERNO WIRE-O 20X28': 6,
+            'BLOCO WIRE-O 12X20': 1,
+            'FICHARIO A5': 3,
+            'CADERNO WIRE-O 17X24': 4,
+            'CADERNO ORGANIZADOR A5': 3,
+            'CADERNO ORGANIZADOR 17X24': 4,
+            'FICHARIO A6': 3
         }
 
-        coluna = formato_map.get(base)
-        if not coluna or coluna not in df_tabela_impressao.columns:
-            st.warning(f"⚠️ Coluna não encontrada: {coluna}")
+        col_index = col_map.get(base)
+        if col_index is None:
+            st.warning(f"⚠️ Formato não encontrado: {base}")
             return None
 
+        # Verificar se a tabela tem colunas suficientes
+        if df_tabela_impressao.shape[1] <= col_index:
+            st.error(f"❌ Tabela não tem a coluna {col_index + 1}. Tem apenas {df_tabela_impressao.shape[1]} colunas.")
+            return None
+
+        # Converter a coluna do formato para número
+        try:
+            df_tabela_impressao.iloc[:, col_index] = pd.to_numeric(
+                df_tabela_impressao.iloc[:, col_index], errors='coerce'
+            )
+        except Exception as e:
+            st.error(f"❌ Erro ao converter coluna {col_index}: {e}")
+            return None
+
+        # Converter QtdFolhas para número
+        df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
+
         # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
-        for _, row in df_tabela_impressao.iterrows():
-            capas_produzidas = row[coluna]
-            if pd.notna(capas_produzidas) and quantidade <= capas_produzidas:
+        for idx, row in df_tabela_impressao.iterrows():
+            valor_celula = row.iloc[col_index]
+            if pd.notna(valor_celula) and quantidade <= valor_celula:
                 folhas = row['QtdFolhas']
                 if pd.notna(folhas):
                     return {"tipo": "offset", "folhas": int(folhas), "m2": None}
