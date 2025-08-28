@@ -108,6 +108,7 @@ def carregar_dados():
                 skipinitialspace=True,
                 dtype=str
             )
+            # Remover colunas vazias
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
             if df_tabela_impressao.shape[1] < 9:
                 st.warning(f"⚠️ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
@@ -118,7 +119,8 @@ def carregar_dados():
                 ]
                 df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
                 df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
-                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML']).reset_index(drop=True)
+                df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
+                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
             df_tabela_impressao = pd.DataFrame()
@@ -225,23 +227,36 @@ def calcular_capa(produto, papel, impressao, quantidade):
         formato_map = {
             'CADERNETA 9X13': '9x13', 'CADERNETA 14X21': '14x21', 'REVISTA 9X13': '9x13',
             'REVISTA 14X21': '14x21', 'PLANNER WIRE-O A5': 'A5', 'FICHARIO 17X24': '17x24',
-            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '14x21',
+            'REVISTA 19X25': '19x25', 'CADERNO WIRE-O 20X28': '20x28', 'BLOCO WIRE-O 12X20': '9x13',
             'FICHARIO A5': 'A5', 'CADERNO WIRE-O 17X24': '17x24', 'CADERNO ORGANIZADOR A5': 'A5',
             'CADERNO ORGANIZADOR 17X24': '17x24', 'FICHARIO A6': 'A5'
         }
         coluna = formato_map.get(base)
         if not coluna or coluna not in df_tabela_impressao.columns:
+            st.warning(f"⚠️ Coluna não encontrada para {base}: {coluna}")
             return None
+
+        if df_tabela_impressao.empty:
+            st.warning("⚠️ Tabela de impressão está vazia.")
+            return None
+
+        # Buscar a primeira faixa de milheiro adequada
         for _, row in df_tabela_impressao.iterrows():
-            if quantidade <= row['Milheiro']:
+            if pd.notna(row['Milheiro']) and quantidade <= row['Milheiro']:
                 folhas = int(row['QtdFolhas'])
                 valor_ml = row['ValorML']
                 custo_total = folhas * valor_ml
                 return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
-        ultima = df_tabela_impressao.iloc[-1]
-        folhas = int(ultima['QtdFolhas'])
-        custo_total = folhas * ultima['ValorML']
-        return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
+
+        # Se não encontrou, usa o último (se existir)
+        if len(df_tabela_impressao) > 0:
+            ultima = df_tabela_impressao.iloc[-1]
+            folhas = int(ultima['QtdFolhas'])
+            custo_total = folhas * ultima['ValorML']
+            return {"tipo": "offset", "folhas": folhas, "m2": None, "custo_total": custo_total}
+        else:
+            st.warning("⚠️ Nenhuma faixa de milheiro disponível.")
+            return None
 
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
@@ -320,7 +335,7 @@ if not produto_selecionado:
     st.stop()
 
 # === Capa ===
-st.markdown("📘 Capa")
+st.markdown("### 📘 Capa")
 col1, col2, col3 = st.columns(3)
 
 # Papel da capa
