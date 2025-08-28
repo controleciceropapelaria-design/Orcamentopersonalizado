@@ -96,11 +96,11 @@ def carregar_dados():
 
             # Renomear colunas manualmente
             df_tabela_impressao.columns = [
-                'LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'VALOR ML', 'QTD FLS'
+                'LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'VALOR ML', 'QtdFolhas'
             ]
 
             # Converter colunas numéricas
-            cols_numericas = ['LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'QTD FLS']
+            cols_numericas = ['LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'QtdFolhas']
             for col in cols_numericas:
                 if col in df_tabela_impressao.columns:
                     df_tabela_impressao[col] = pd.to_numeric(df_tabela_impressao[col], errors='coerce')
@@ -215,7 +215,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → índice da coluna (0-indexed) - EXATAMENTE como no Apps Script
+        # Mapeamento: base → índice da coluna (0-indexed)
         col_map = {
             'CADERNETA 9X13': 1,
             'CADERNETA 14X21': 2,
@@ -243,22 +243,18 @@ def calcular_capa(produto, papel, impressao, quantidade):
             st.error(f"❌ Tabela não tem a coluna {col_index + 1}. Tem apenas {df_tabela_impressao.shape[1]} colunas.")
             return None
 
-        # DEBUG: Mostre como está a tabela
-        # st.write("🔍 Debug - Tabela de impressão:")
-        # st.write(df_tabela_impressao[['9x13', '14x21', 'A5', '17x24', '20x28', 'QtdFolhas']])
-
         # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
-        for idx, row in df_tabela_impressao.iterrows():
+        for _, row in df_tabela_impressao.iterrows():
             valor_celula = row.iloc[col_index]
             if pd.notna(valor_celula) and quantidade <= valor_celula:
-                folhas = row['QtdFolhas']
+                folhas = row['QtdFolhas']  # ← Agora o nome está certo
                 if pd.notna(folhas):
                     return {"tipo": "offset", "folhas": int(folhas), "m2": None}
 
         # Se não encontrou, usa a última linha (fallback)
         if len(df_tabela_impressao) > 0:
             ultima = df_tabela_impressao.iloc[-1]
-            folhas = ultima['QtdFolhas']
+            folhas = ultima['QtdFolhas']  # ← Nome corrigido
             if pd.notna(folhas):
                 st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(folhas)} folhas.")
                 return {"tipo": "offset", "folhas": int(folhas), "m2": None}
