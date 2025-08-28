@@ -101,37 +101,40 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            # Forçar leitura com encoding UTF-8 e separador ,
+            # Forçar leitura com encoding UTF-8 e tratamento de coluna
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
                 skipinitialspace=True,
-                dtype=str  # Ler tudo como string primeiro
+                dtype=str,
+                skip_blank_lines=True,
+                engine='python'
             )
 
-            # Remover colunas vazias (NaN ou sem nome)
+            # Remover colunas totalmente vazias
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
 
-            # Renomear a primeira coluna de 'LÂMINAS' para 'Milheiro' (para uso interno)
-            if df_tabela_impressao.shape[1] >= 9:
+            # Verificar se tem pelo menos 9 colunas
+            if df_tabela_impressao.shape[1] < 9:
+                st.error(f"❌ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
+                st.write("Colunas encontradas:", df_tabela_impressao.columns.tolist())
+                df_tabela_impressao = pd.DataFrame()
+            else:
+                # Renomear colunas manualmente (ignorando o nome original da primeira)
                 df_tabela_impressao.columns = [
                     'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
                 ] + [f"Extra_{i}" for i in range(df_tabela_impressao.shape[1] - 9)]
-            else:
-                st.error(f"❌ CSV tem apenas {df_tabela_impressao.shape[1]} colunas. Esperado: 9")
-                df_tabela_impressao = pd.DataFrame()
 
-            # Converter colunas numéricas
-            df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
-            df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
-            df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
+                # Converter colunas numéricas
+                df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
+                df_tabela_impressao['ValorML'] = pd.to_numeric(df_tabela_impressao['ValorML'], errors='coerce')
+                df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
 
-            # Remover linhas inválidas
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
+                # Remover linhas inválidas
+                df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro', 'ValorML', 'QtdFolhas']).reset_index(drop=True)
 
-            # ✅ Mensagem de sucesso
-            st.success("✅ Tabela de impressão carregada com sucesso!")
+                st.success("✅ Tabela de impressão carregada com sucesso!")
 
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
