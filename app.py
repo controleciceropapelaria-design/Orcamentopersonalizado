@@ -223,13 +223,13 @@ def calcular_capa(produto, papel, impressao, quantidade):
             'REVISTA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
             'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
             'PLANNER WIRE-O A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv',
-            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv',
             'FICHARIO 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
             'REVISTA 19X25': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao19x25.csv',
             'CADERNO WIRE-O 20X28': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao20x28.csv',
-            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
+            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
             'CADERNO WIRE-O 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
-            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
+            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv',
             'CADERNO ORGANIZADOR 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv',
             'FICHARIO A6': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv'
         }
@@ -240,12 +240,19 @@ def calcular_capa(produto, papel, impressao, quantidade):
             return None
 
         try:
-            # Carregar CSV: LAMINAS = capacidade de produção
+            # Carregar CSV com nomes exatos das colunas
             df_formato = pd.read_csv(url_csv, encoding='utf-8')
+            
+            # Renomear colunas para nomes padronizados
+            df_formato.columns = ['LAMINAS', 'VALOR ML', 'QTD FLS']
+            
+            # Converter para número
             df_formato['LAMINAS'] = pd.to_numeric(df_formato['LAMINAS'], errors='coerce')
-            df_formato['QtdFolhas'] = pd.to_numeric(df_formato['QtdFolhas'], errors='coerce')
-            df_formato = df_formato.dropna(subset=['LAMINAS', 'QtdFolhas']).reset_index(drop=True)
-
+            df_formato['QTD FLS'] = pd.to_numeric(df_formato['QTD FLS'], errors='coerce')
+            
+            # Remover linhas inválidas
+            df_formato = df_formato.dropna(subset=['LAMINAS', 'QTD FLS']).reset_index(drop=True)
+            
             # Ordenar por LAMINAS (crescente)
             df_formato = df_formato.sort_values('LAMINAS')
 
@@ -256,13 +263,13 @@ def calcular_capa(produto, papel, impressao, quantidade):
         # Buscar a primeira linha onde LAMINAS >= quantidade
         for _, row in df_formato.iterrows():
             if quantidade <= row['LAMINAS']:
-                return {"tipo": "offset", "folhas": int(row['QtdFolhas']), "m2": None}
+                return {"tipo": "offset", "folhas": int(row['QTD FLS']), "m2": None}
 
         # Se não encontrou, usa a última linha
         if len(df_formato) > 0:
             ultima = df_formato.iloc[-1]
-            st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(ultima['QtdFolhas'])} folhas.")
-            return {"tipo": "offset", "folhas": int(ultima['QtdFolhas']), "m2": None}
+            st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(ultima['QTD FLS'])} folhas.")
+            return {"tipo": "offset", "folhas": int(ultima['QTD FLS']), "m2": None}
 
         st.error("❌ Nenhuma faixa válida encontrada no CSV.")
         return None
