@@ -86,27 +86,27 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-        df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8', skipinitialspace=True)
+            df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8', skipinitialspace=True)
         
-        # Remover colunas completamente vazias
-        df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
+            # Remover colunas completamente vazias
+            df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
+            
+            # Renomear colunas com base na estrutura real
+            df_tabela_impressao.columns = [
+                'Laminas', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
+            ]
+            
+            # Converter 'Laminas' para número
+            df_tabela_impressao['Laminas'] = pd.to_numeric(df_tabela_impressao['Laminas'], errors='coerce')
+            
+            # Remover linhas com Laminas inválido
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Laminas']).reset_index(drop=True)
+            
+            st.success("✅ Tabela de impressão carregada com sucesso!")
         
-        # Renomear colunas com base na estrutura real
-        df_tabela_impressao.columns = [
-            'Laminas', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
-        ]
-        
-        # Converter 'Laminas' para número
-        df_tabela_impressao['Laminas'] = pd.to_numeric(df_tabela_impressao['Laminas'], errors='coerce')
-        
-        # Remover linhas com Laminas inválido
-        df_tabela_impressao = df_tabela_impressao.dropna(subset=['Laminas']).reset_index(drop=True)
-        
-        st.success("✅ Tabela de impressão carregada com sucesso!")
-        
-    except Exception as e:
-        st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
-        df_tabela_impressao = pd.DataFrame()
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
+            df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
 
