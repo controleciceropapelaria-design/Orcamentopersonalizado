@@ -85,49 +85,33 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            # Forçar leitura com encoding UTF-8 e tratamento de separador
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
                 skipinitialspace=True,
-                dtype=str  # Ler tudo como string primeiro
+                dtype=str,
+                header=None  # ❌ Ignorar a primeira linha como cabeçalho
             )
 
-            # Remover colunas vazias
-            df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-
-            # Renomear colunas manualmente (ignorando o cabeçalho original)
+            # Renomear colunas manualmente
             df_tabela_impressao.columns = [
-                'LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'VALOR ML', 'QtdFolhas'
-            ] + [f"Extra_{i}" for i in range(df_tabela_impressao.shape[1] - 9)]
+                'LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'VALOR ML', 'QTD FLS'
+            ]
 
-            # Converter colunas numéricas (forçar limpeza)
-            def limpar_e_converter(serie):
-                return pd.to_numeric(
-                    serie.astype(str)
-                    .str.replace(r'[^\d,\.]', '', regex=True)  # Remove tudo que não é número, vírgula ou ponto
-                    .str.replace(',', '.', regex=False)        # Substitui vírgula por ponto
-                    .str.strip(),
-                    errors='coerce'
-                )
+            # Converter colunas numéricas
+            cols_numericas = ['LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'QTD FLS']
+            for col in cols_numericas:
+                if col in df_tabela_impressao.columns:
+                    df_tabela_impressao[col] = pd.to_numeric(df_tabela_impressao[col], errors='coerce')
 
-            df_tabela_impressao['9x13'] = limpar_e_converter(df_tabela_impressao['9x13'])
-            df_tabela_impressao['14x21'] = limpar_e_converter(df_tabela_impressao['14x21'])
-            df_tabela_impressao['A5'] = limpar_e_converter(df_tabela_impressao['A5'])
-            df_tabela_impressao['17x24'] = limpar_e_converter(df_tabela_impressao['17x24'])
-            df_tabela_impressao['19x25'] = limpar_e_converter(df_tabela_impressao['19x25'])
-            df_tabela_impressao['20x28'] = limpar_e_converter(df_tabela_impressao['20x28'])
-            df_tabela_impressao['QtdFolhas'] = limpar_e_converter(df_tabela_impressao['QtdFolhas'])
-
-            # Remover linhas com QtdFolhas inválido
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=['QtdFolhas']).reset_index(drop=True)
+            # Remover linhas com valores inválidos
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=cols_numericas).reset_index(drop=True)
 
             st.success("✅ Tabela de impressão carregada com sucesso!")
 
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
-            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
             df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
