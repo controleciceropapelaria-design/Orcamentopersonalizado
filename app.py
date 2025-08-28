@@ -85,33 +85,34 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
+            # Forçar leitura SEM cabeçalho, como uma matriz de valores
             df_tabela_impressao = pd.read_csv(
                 URL_TABELA_IMPRESSAO,
                 encoding='utf-8',
                 sep=',',
+                header=None,           # ❌ NENHUM cabeçalho
                 skipinitialspace=True,
-                dtype=str,
-                header=None  # ❌ Ignorar a primeira linha como cabeçalho
+                dtype=str              # Ler tudo como string
             )
 
-            # Renomear colunas manualmente
-            df_tabela_impressao.columns = [
-                'LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'VALOR ML', 'QtdFolhas'
-            ]
+            # Remover colunas vazias
+            df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
 
-            # Converter colunas numéricas
-            cols_numericas = ['LAMINAS', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'QtdFolhas']
-            for col in cols_numericas:
-                if col in df_tabela_impressao.columns:
-                    df_tabela_impressao[col] = pd.to_numeric(df_tabela_impressao[col], errors='coerce')
+            # Manter apenas as 9 primeiras colunas
+            df_tabela_impressao = df_tabela_impressao.iloc[:, :9]
 
-            # Remover linhas com valores inválidos
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=cols_numericas).reset_index(drop=True)
+            # Converter todas as colunas para número
+            for i in range(9):
+                df_tabela_impressao[i] = pd.to_numeric(df_tabela_impressao[i], errors='coerce')
+
+            # Remover linhas com LÂMINAS inválido (primeira coluna)
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=[0]).reset_index(drop=True)
 
             st.success("✅ Tabela de impressão carregada com sucesso!")
 
         except Exception as e:
             st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
+            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
             df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
@@ -243,18 +244,22 @@ def calcular_capa(produto, papel, impressao, quantidade):
             st.error(f"❌ Tabela não tem a coluna {col_index + 1}. Tem apenas {df_tabela_impressao.shape[1]} colunas.")
             return None
 
+        # DEBUG: Mostre os dados reais
+        # st.write("🔍 Debug - Tabela de impressão (sem cabeçalho):")
+        # st.write(df_tabela_impressao)
+
         # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
-        for _, row in df_tabela_impressao.iterrows():
+        for idx, row in df_tabela_impressao.iterrows():
             valor_celula = row.iloc[col_index]
             if pd.notna(valor_celula) and quantidade <= valor_celula:
-                folhas = row['QtdFolhas']  # ← Agora o nome está certo
+                folhas = row.iloc[8]  # 9ª coluna = QtdFolhas
                 if pd.notna(folhas):
                     return {"tipo": "offset", "folhas": int(folhas), "m2": None}
 
         # Se não encontrou, usa a última linha (fallback)
         if len(df_tabela_impressao) > 0:
             ultima = df_tabela_impressao.iloc[-1]
-            folhas = ultima['QtdFolhas']  # ← Nome corrigido
+            folhas = ultima.iloc[8]
             if pd.notna(folhas):
                 st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(folhas)} folhas.")
                 return {"tipo": "offset", "folhas": int(folhas), "m2": None}
