@@ -93,14 +93,14 @@ def carregar_dados():
             
             # Renomear colunas com base na estrutura real
             df_tabela_impressao.columns = [
-                'Laminas', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
+                'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
             ]
             
-            # Converter 'Laminas' para número
-            df_tabela_impressao['Laminas'] = pd.to_numeric(df_tabela_impressao['Laminas'], errors='coerce')
+            # Converter 'Milheiro' para número
+            df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
             
-            # Remover linhas com Laminas inválido
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Laminas']).reset_index(drop=True)
+            # Remover linhas com Milheiro inválido
+            df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro']).reset_index(drop=True)
             
             st.success("✅ Tabela de impressão carregada com sucesso!")
         
