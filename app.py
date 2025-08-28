@@ -201,20 +201,20 @@ def calcular_capa(produto, papel, impressao, quantidade):
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
         # Mapeamento: base → índice da coluna na tabela (0-indexado)
         col_map = {
-            'CADERNETA 9X13': 1,
-            'CADERNETA 14X21': 2,
-            'REVISTA 9X13': 1,
-            'REVISTA 14X21': 2,
-            'PLANNER WIRE-O A5': 3,
-            'FICHARIO 17X24': 4,
-            'REVISTA 19X25': 5,
-            'CADERNO WIRE-O 20X28': 6,
-            'BLOCO WIRE-O 12X20': 2,  # Usa mesma coluna que 14x21
-            'FICHARIO A5': 4,        # Usa 17x24
-            'CADERNO WIRE-O 17X24': 4,
-            'CADERNO ORGANIZADOR A5': 4,
-            'CADERNO ORGANIZADOR 17X24': 4,
-            'FICHARIO A6': 3
+            'CADERNETA 9X13': 2,
+            'CADERNETA 14X21': 3,
+            'REVISTA 9X13': 2,
+            'REVISTA 14X21': 3,
+            'PLANNER WIRE-O A5': 4,
+            'FICHARIO 17X24': 5,
+            'REVISTA 19X25': 6,
+            'CADERNO WIRE-O 20X28': 7,
+            'BLOCO WIRE-O 12X20': 3,  # Usa mesma coluna que 14x21
+            'FICHARIO A5': 5,        # Usa 17x24
+            'CADERNO WIRE-O 17X24': 5,
+            'CADERNO ORGANIZADOR A5': 5,
+            'CADERNO ORGANIZADOR 17X24': 5,
+            'FICHARIO A6': 4
         }
 
         col_index = col_map.get(base)
