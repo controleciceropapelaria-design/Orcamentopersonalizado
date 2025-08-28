@@ -85,17 +85,35 @@ def carregar_dados():
 
         # --- 6. Carregar tabela de impressão (offset) ---
         try:
-            df_tabela_impressao = pd.read_csv(URL_TABELA_IMPRESSAO, encoding='utf-8', skipinitialspace=True)
+            df_tabela_impressao = pd.read_csv(
+                URL_TABELA_IMPRESSAO,
+                encoding='utf-8',
+                sep=',',
+                skipinitialspace=True,
+                dtype=str  # Ler tudo como string primeiro
+            )
+
             # Remover colunas vazias
             df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-            # Renomear colunas conforme estrutura real
+
+            # Renomear colunas (você pode manter os nomes reais do CSV)
             df_tabela_impressao.columns = [
                 'Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas'
-            ]
-            df_tabela_impressao['Milheiro'] = pd.to_numeric(df_tabela_impressao['Milheiro'], errors='coerce')
+            ] + [f"Extra_{i}" for i in range(df_tabela_impressao.shape[1] - 9)]
+
+            # Converter TODAS as colunas numéricas
+            cols_numericas = ['Milheiro', '9x13', '14x21', 'A5', '17x24', '19x25', '20x28', 'ValorML', 'QtdFolhas']
+            for col in cols_numericas:
+                if col in df_tabela_impressao.columns:
+                    df_tabela_impressao[col] = pd.to_numeric(df_tabela_impressao[col], errors='coerce')
+
+            # Remover linhas com Milheiro inválido
             df_tabela_impressao = df_tabela_impressao.dropna(subset=['Milheiro']).reset_index(drop=True)
+
+            st.success("✅ Tabela de impressão carregada com sucesso!")
+
         except Exception as e:
-            st.warning(f"⚠️ Erro ao carregar tabela de impressão: {e}")
+            st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
             df_tabela_impressao = pd.DataFrame()
 
         return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
@@ -199,7 +217,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → índice da coluna (0-indexado)
+        # Mapeamento: base → índice da coluna (0-indexed)
         col_map = {
             'CADERNETA 9X13': 1,
             'CADERNETA 14X21': 2,
@@ -219,25 +237,13 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
         col_index = col_map.get(base)
         if col_index is None:
-            st.warning(f"⚠️ Formato não encontrado: {base}")
+            st.warning(f"⚠️ Formato não encontrado na tabela: {base}")
             return None
 
         # Verificar se a tabela tem colunas suficientes
         if df_tabela_impressao.shape[1] <= col_index:
             st.error(f"❌ Tabela não tem a coluna {col_index + 1}. Tem apenas {df_tabela_impressao.shape[1]} colunas.")
             return None
-
-        # Converter a coluna do formato para número
-        try:
-            df_tabela_impressao.iloc[:, col_index] = pd.to_numeric(
-                df_tabela_impressao.iloc[:, col_index], errors='coerce'
-            )
-        except Exception as e:
-            st.error(f"❌ Erro ao converter coluna {col_index}: {e}")
-            return None
-
-        # Converter QtdFolhas para número
-        df_tabela_impressao['QtdFolhas'] = pd.to_numeric(df_tabela_impressao['QtdFolhas'], errors='coerce')
 
         # Buscar a primeira linha onde o valor da coluna do formato >= quantidade
         for idx, row in df_tabela_impressao.iterrows():
