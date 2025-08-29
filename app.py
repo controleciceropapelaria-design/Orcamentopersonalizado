@@ -219,19 +219,19 @@ def calcular_capa(produto, papel, impressao, quantidade):
         # Mapeamento: base → URL do CSV específico
         csv_map = {
             'CADERNETA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_9x13.csv',
-            'CADERNETA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao14x21.csv',
+            'CADERNETA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
             'REVISTA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
-            'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao14x21.csv',
-            'PLANNER WIRE-O A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressaoA5.csv',
-            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao17x24.csv',
-            'FICHARIO 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao17x24.csv',
-            'REVISTA 19X25': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao19x25.csv',
-            'CADERNO WIRE-O 20X28': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao20x28.csv',
-            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao14x21.csv',
-            'CADERNO WIRE-O 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao17x24.csv',
-            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao17x24.csv',
-            'CADERNO ORGANIZADOR 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressao17x24.csv',
-            'FICHARIO A6': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/Or%C3%A7amento%20Personalizado%20-%20tabelaimpressaoA5.csv'
+            'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
+            'PLANNER WIRE-O A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_A5.csv',
+            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
+            'FICHARIO 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
+            'REVISTA 19X25': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_19x25.csv',
+            'CADERNO WIRE-O 20X28': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_20x28.csv',
+            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
+            'CADERNO WIRE-O 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
+            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
+            'CADERNO ORGANIZADOR 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
+            'FICHARIO A6': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_A5.csv'
         }
 
         url_csv = csv_map.get(base)
