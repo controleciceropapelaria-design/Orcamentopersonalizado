@@ -478,54 +478,45 @@ cols = st.columns(5)
 if 'capa_resultado' in st.session_state:
     with cols[0]:
         st.markdown("**Capa**")
-        valor = st.session_state.capa_resultado
-        tipo = valor['tipo']
-        if tipo == "couro":
-            texto = f"{valor['m2']} m²"
-        else:
-            texto = f"{valor['folhas']} folhas"
-        st.metric("Consumo", texto)
+        valor = st.session_state.capa_resultadotipo = valor['tipo']
 
+        # Calcular custo unitário total da capa (papel + impressão)
+        custo_papel_por_unidade = 0.0
+        custo_impressao_por_unidade = 0.0
+
+        # Custo do papel da capa
+        if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
+            resultado_papel = calcular_personalizado(
+                nome="Capa",
+                papel_selecionado=st.session_state.papel_capa,
+                aproveitamento=1,  # 1 folha por unidade
+                valor_servico=0.0,
+                quantidade_orcamento=quantidade_orcamento
+            )
+            if resultado_papel[0] is not None:
+                custo_papel_por_unidade = resultado_papel[0]
+
+        # Custo da impressão da capa
+        if tipo != "couro" and valor.get('custo_impressao_unitario') is not None:
+            custo_impressao_por_unidade = valor['custo_impressao_unitario']
+
+        # Custo total unitário da capa
+        custo_total_unitario_capa = custo_papel_por_unidade + custo_impressao_por_unidade
+
+        # Mostrar só o custo unitário no card principal
+        st.metric("Custo Unit.", f"R$ {custo_total_unitario_capa:,.2f}".replace('.', ','))
+
+        # Detalhes
         with st.expander("Detalhes"):
             st.markdown(f"**Produto:** {produto_selecionado}")
             st.markdown(f"**Papel:** {st.session_state.papel_capa}")
             if tipo != "couro":
                 st.markdown(f"**Impressão:** {st.session_state.impressao_capa}")
-
-            # Calcular custo unitário total da capa (papel + impressão)
-            custo_papel_por_unidade = 0.0
-            custo_impressao_por_unidade = 0.0
-
-            # Custo do papel da capa
-            if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
-                resultado_papel = calcular_personalizado(
-                    nome="Capa",
-                    papel_selecionado=st.session_state.papel_capa,
-                    aproveitamento=1,  # 1 folha por unidade
-                    valor_servico=0.0,
-                    quantidade_orcamento=quantidade_orcamento
-                )
-                if resultado_papel[0] is not None:
-                    custo_papel_por_unidade = resultado_papel[0]
+                if 'custo_impressao_unitario' in valor:
+                    st.markdown(f"**Custo serviço/unid:** R$ {valor['custo_impressao_unitario']:,.2f}".replace('.', ','))
+                if custo_papel_por_unidade > 0:
                     st.markdown(f"**Custo papel/unid:** R$ {custo_papel_por_unidade:,.2f}".replace('.', ','))
 
-            # Custo da impressão da capa
-            if tipo != "couro" and valor.get('custo_impressao_unitario') is not None:
-                custo_impressao_por_unidade = valor['custo_impressao_unitario']
-                st.markdown(f"**Custo serviço/unid:** R$ {custo_impressao_por_unidade:,.2f}".replace('.', ','))
-
-            # Custo total unitário da capa
-            custo_total_unitario_capa = custo_papel_por_unidade + custo_impressao_por_unidade
-            st.markdown(f"**Custo total/unid:** R$ {custo_total_unitario_capa:,.2f}".replace('.', ','))
-
-            # Para couro, só mostrar o consumo
-            if tipo == "couro":
-                st.markdown(f"**Consumo:** {valor['m2']} m²")
-
-        # ✅ Mostrar o custo unitário da capa no card principal
-        if tipo != "couro":
-            st.metric("Custo Unit.", f"R$ {custo_total_unitario_capa:,.2f}".replace('.', ','))
-            
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
     with cols[1]:
