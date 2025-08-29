@@ -218,7 +218,7 @@ def calcular_capa(produto, papel, impressao, quantidade):
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
         # Mapeamento: base → URL do CSV específico
         csv_map = {
-            'CADERNETA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
+            'CADERNETA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_9x13.csv',
             'CADERNETA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
             'REVISTA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
             'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv',
