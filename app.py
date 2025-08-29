@@ -478,28 +478,21 @@ cols = st.columns(5)
 if 'capa_resultado' in st.session_state:
     with cols[0]:
         st.markdown("**Capa**")
-        valor = st.session_state.capa_resultado  # ✅ Corrigido: separado
+        valor = st.session_state.capa_resultado
         tipo = valor['tipo']
 
-        # Calcular custo unitário total da capa (papel + impressão)
+        # Calcular custo unitário do papel da capa (só para exibir)
         custo_papel_por_unidade = 0.0
-        custo_impressao_por_unidade = 0.0
-
-        # Custo do papel da capa
         if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
-            resultado_papel = calcular_personalizado(
-                nome="Capa",
-                papel_selecionado=st.session_state.papel_capa,
-                aproveitamento=1,  # 1 folha por unidade
-                valor_servico=0.0,
-                quantidade_orcamento=quantidade_orcamento
-            )
-            if resultado_papel[0] is not None:
-                custo_papel_por_unidade = resultado_papel[0]
+            df_papel = df_compras[df_compras['PapelLimpo'] == st.session_state.papel_capa]
+            if not df_papel.empty:
+                preco_unitario_papel = df_papel.iloc[0]['ValorUnitario']
+                folhas_usadas = valor['folhas']
+                custo_total_papel = preco_unitario_papel * folhas_usadas
+                custo_papel_por_unidade = custo_total_papel / quantidade_orcamento
 
         # Custo da impressão da capa
-        if tipo != "couro" and valor.get('custo_impressao_unitario') is not None:
-            custo_impressao_por_unidade = valor['custo_impressao_unitario']
+        custo_impressao_por_unidade = valor.get('custo_impressao_unitario', 0.0)
 
         # Custo total unitário da capa
         custo_total_unitario_capa = custo_papel_por_unidade + custo_impressao_por_unidade
@@ -615,19 +608,15 @@ if 'capa_resultado' in st.session_state:
         itens.append("Capa (Impressão)")
 
     # Custo do papel da capa (se não for couro)
-if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
-    # Reutiliza calcular_personalizado: 1 unidade por folha (aproveitamento = 1)
-    resultado_papel = calcular_personalizado(
-        nome="Capa",
-        papel_selecionado=st.session_state.papel_capa,
-        aproveitamento=1,  # 1 folha por unidade (da capa)
-        valor_servico=0.0,  # Sem custo de serviço aqui
-        quantidade_orcamento=quantidade_orcamento
-    )
-    if resultado_papel[0] is not None:
-        custo_papel_por_unidade = resultado_papel[0]  # Custo total unitário (papel)
-        custo_total += custo_papel_por_unidade
-        itens.append("Capa (Papel)")
+    if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
+        df_papel = df_compras[df_compras['PapelLimpo'] == st.session_state.papel_capa]
+        if not df_papel.empty:
+            preco_unitario_papel = df_papel.iloc[0]['ValorUnitario']
+            folhas_usadas = valor['folhas']
+            custo_total_papel = preco_unitario_papel * folhas_usadas
+            custo_papel_por_unidade = custo_total_papel / quantidade_orcamento
+            custo_total += custo_papel_por_unidade
+            itens.append("Capa (Papel)")
 
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
@@ -662,7 +651,7 @@ elif adesivo_selecionado == "Personalizado" and custo_adesivo:
     itens.append("Adesivo (Pers.)")
 
 if itens:
-    st.success(f"**Custo Total Unitário ({' + '.join(itens)}):** R$ {custo_total:,.4f}".replace('.', ','))
+    st.success(f"**Custo Total Unitário ({' + '.join(itens)}):** R$ {custo_total:,.2f}".replace('.', ','))
 else:
     st.warning("Nenhum item selecionado.")
 
