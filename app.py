@@ -493,8 +493,21 @@ if 'capa_resultado' in st.session_state:
                 if 'custo_impressao_total' in valor:
                     st.markdown(f"**Custo total da impressão:** R$ {valor['custo_impressao_total']:,.2f}".replace('.', ','))
                     st.markdown(f"**Custo unitário da impressão:** R$ {valor['custo_impressao_unitario']:,.6f}".replace('.', ','))
-                if tipo == "digital" and 'folhas_uteis' in valor:
-                    st.markdown(f"**Folhas úteis (47x33 ou 56x33):** {valor['folhas_uteis']}")
+                
+                # ✅ Adicione o custo do papel da capa
+                if st.session_state.papel_capa and valor['folhas']:
+                    resultado_papel = calcular_personalizado(
+                        nome="Capa",
+                        papel_selecionado=st.session_state.papel_capa,
+                        aproveitamento=1,  # 1 folha por unidade
+                        valor_servico=0.0,   # Sem serviço aqui
+                        quantidade_orcamento=quantidade_orcamento
+                    )
+                    if resultado_papel[0] is not None:
+                        custo_papel_por_unidade = resultado_papel[0]
+                        st.markdown(f"**Custo unitário do papel da capa:** R$ {custo_papel_por_unidade:,.4f}".replace('.', ','))
+                        if tipo == "digital" and 'folhas_uteis' in valor:
+                            st.markdown(f"**Folhas úteis (47x33 ou 56x33):** {valor['folhas_uteis']}")
             else:
                 st.markdown(f"**Consumo:** {valor['m2']} m²")
 
