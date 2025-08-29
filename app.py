@@ -478,7 +478,8 @@ cols = st.columns(5)
 if 'capa_resultado' in st.session_state:
     with cols[0]:
         st.markdown("**Capa**")
-        valor = st.session_state.capa_resultadotipo = valor['tipo']
+        valor = st.session_state.capa_resultado  # ✅ Corrigido: separado
+        tipo = valor['tipo']
 
         # Calcular custo unitário total da capa (papel + impressão)
         custo_papel_por_unidade = 0.0
