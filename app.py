@@ -362,7 +362,7 @@ if not produto_selecionado:
     st.stop()
 
 # === Capa ===
-st.markdown("### 📘 Capa")
+st.markdown("📘 Capa")
 col1, col2, col3 = st.columns(3)
 
 # Papel da capa
