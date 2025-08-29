@@ -11,12 +11,12 @@ URL_USO_PAPEL_DIVISORIA = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_o
 URL_USO_PAPEL_ADESIVO = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcamento/main/usodepapeladesivo.csv"
 
 # CSVs separados por formato
-URL_9X13 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv"
-URL_14X21 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv"
-URL_A5 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv"
-URL_17X24 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv"
-URL_19X25 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao19x25.csv"
-URL_20X28 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao20x28.csv"
+URL_9X13 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_20x28.csv"
+URL_14X21 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv"
+URL_A5 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_A5.csv"
+URL_17X24 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv"
+URL_19X25 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_19x25.csv"
+URL_20X28 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_20x28.csv"
 
 # ================== TABELA DE PREÇOS DIGITAL (unitário por folha útil) ==================
 PRECO_DIGITAL = {
@@ -210,13 +210,13 @@ def calcular_capa(produto, papel, impressao, quantidade):
             'REVISTA 9X13': URL_9X13,
             'REVISTA 14X21': URL_14X21,
             'PLANNER WIRE-O A5': URL_A5,
-            'FICHARIO A5': URL_A5,
+            'FICHARIO A5': URL_17X24,
             'FICHARIO 17X24': URL_17X24,
             'REVISTA 19X25': URL_19X25,
             'CADERNO WIRE-O 20X28': URL_20X28,
-            'BLOCO WIRE-O 12X20': URL_9X13,
+            'BLOCO WIRE-O 12X20': URL_14X21,
             'CADERNO WIRE-O 17X24': URL_17X24,
-            'CADERNO ORGANIZADOR A5': URL_A5,
+            'CADERNO ORGANIZADOR A5': URL_17X24,
             'CADERNO ORGANIZADOR 17X24': URL_17X24,
             'FICHARIO A6': URL_A5
         }
