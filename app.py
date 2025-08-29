@@ -338,6 +338,21 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     return None
 
+# ====================FUNÇÃO CALCULAR PAPEL (CAPA) ===================
+def calcular_custo_papel(papel_selecionado, quantidade_folhas, quantidade_orcamento):
+    if quantidade_folhas <= 0 or quantidade_orcamento <= 0:
+        return None, None, None, None, None
+    df_papel = df_compras[df_compras['PapelLimpo'] == papel_selecionado]
+    if df_papel.empty:
+        st.warning(f"⚠️ Papel não encontrado: **{papel_selecionado}**")
+        return None, None, None, None, None
+    preco_unitario_papel = df_papel.iloc[0]['ValorUnitario']
+    ultima_data = df_papel.iloc[0]['DataEmissaoNF'].strftime('%d/%m/%Y')
+    # Aproveitamento = 1 (1 folha por unidade)
+    custo_papel_por_unidade = preco_unitario_papel / 1
+    custo_total_papel = preco_unitario_papel * quantidade_folhas
+    return custo_papel_por_unidade, custo_total_papel, preco_unitario_papel, papel_selecionado, ultima_data
+
 # ================== SELETOR DE PRODUTO (CAPA) ==================
 st.markdown("### 📕 Seleção de Produto (Capa)")
 produtos_base = [
@@ -605,7 +620,7 @@ if 'capa_resultado' in st.session_state:
         if custo_papel_por_unidade is not None:
             custo_total += custo_papel_por_unidade
             itens.append("Capa (Papel)")
-            
+
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
     custo_total += custo_miolo[0]
