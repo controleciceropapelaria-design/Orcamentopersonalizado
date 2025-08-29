@@ -338,21 +338,6 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     return None
 
-# ====================FUNÇÃO CALCULAR PAPEL (CAPA) ===================
-def calcular_custo_papel(papel_selecionado, quantidade_folhas, quantidade_orcamento):
-    if quantidade_folhas <= 0 or quantidade_orcamento <= 0:
-        return None, None, None, None, None
-    df_papel = df_compras[df_compras['PapelLimpo'] == papel_selecionado]
-    if df_papel.empty:
-        st.warning(f"⚠️ Papel não encontrado: **{papel_selecionado}**")
-        return None, None, None, None, None
-    preco_unitario_papel = df_papel.iloc[0]['ValorUnitario']
-    ultima_data = df_papel.iloc[0]['DataEmissaoNF'].strftime('%d/%m/%Y')
-    # Aproveitamento = 1 (1 folha por unidade)
-    custo_papel_por_unidade = preco_unitario_papel / 1
-    custo_total_papel = preco_unitario_papel * quantidade_folhas
-    return custo_papel_por_unidade, custo_total_papel, preco_unitario_papel, papel_selecionado, ultima_data
-
 # ================== SELETOR DE PRODUTO (CAPA) ==================
 st.markdown("### 📕 Seleção de Produto (Capa)")
 produtos_base = [
@@ -610,16 +595,19 @@ if 'capa_resultado' in st.session_state:
         itens.append("Capa (Impressão)")
 
     # Custo do papel da capa (se não for couro)
-    if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
-        # Reutiliza a lógica de custo de papel
-        custo_papel_por_unidade, _, _, _, _ = calcular_custo_papel(
-            st.session_state.papel_capa,
-            valor['folhas'],
-            quantidade_orcamento
-        )
-        if custo_papel_por_unidade is not None:
-            custo_total += custo_papel_por_unidade
-            itens.append("Capa (Papel)")
+if tipo != "couro" and st.session_state.papel_capa and valor['folhas']:
+    # Reutiliza calcular_personalizado: 1 unidade por folha (aproveitamento = 1)
+    resultado_papel = calcular_personalizado(
+        nome="Capa",
+        papel_selecionado=st.session_state.papel_capa,
+        aproveitamento=1,  # 1 folha por unidade (da capa)
+        valor_servico=0.0,  # Sem custo de serviço aqui
+        quantidade_orcamento=quantidade_orcamento
+    )
+    if resultado_papel[0] is not None:
+        custo_papel_por_unidade = resultado_papel[0]  # Custo total unitário (papel)
+        custo_total += custo_papel_por_unidade
+        itens.append("Capa (Papel)")
 
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
