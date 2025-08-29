@@ -9,7 +9,30 @@ URL_USO_PAPEL_MIOLO = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcam
 URL_USO_PAPEL_BOLSA = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcamento/main/usodepapelbolsa.csv"
 URL_USO_PAPEL_DIVISORIA = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcamento/main/usodepapeldivisoria.csv"
 URL_USO_PAPEL_ADESIVO = "https://raw.githubusercontent.com/K1NGOD-RJ/projeto_orcamento/main/usodepapeladesivo.csv"
-URL_TABELA_IMPRESSAO = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/ccff6ceeb6416b82c73928052f2aba3eea6ab3a7/tabelaimpressao.csv"
+
+# CSVs separados por formato
+URL_9X13 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv"
+URL_14X21 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao14x21.csv"
+URL_A5 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressaoA5.csv"
+URL_17X24 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao17x24.csv"
+URL_19X25 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao19x25.csv"
+URL_20X28 = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao20x28.csv"
+
+# ================== TABELA DE PREÇOS DIGITAL (unitário por folha útil) ==================
+PRECO_DIGITAL = {
+    '47x33': {
+        '4/0': 1.16,
+        '4/1': 1.40,
+        '1/0': 0.24,
+        '1/1': 0.48
+    },
+    '56x33': {
+        '4/0': 2.32,
+        '4/1': 2.80,
+        '1/0': 0.48,
+        '1/1': 0.96
+    }
+}
 
 # ================== CONFIGURAÇÃO DA PÁGINA ==================
 st.set_page_config(page_title="📦 Cálculo de Custo", layout="centered")
@@ -83,46 +106,14 @@ def carregar_dados():
         df_adesivos['QuantidadeAprovada'] = pd.to_numeric(df_adesivos['QuantidadeAprovada'], errors='coerce')
         df_adesivos['Papel'] = df_adesivos['Papel'].apply(limpar_papel)
 
-        # --- 6. Carregar tabela de impressão (offset) ---
-        try:
-            # Forçar leitura SEM cabeçalho, como matriz
-            df_tabela_impressao = pd.read_csv(
-                URL_TABELA_IMPRESSAO,
-                encoding='utf-8',
-                sep=',',
-                header=None,           # ❌ Sem cabeçalho
-                skipinitialspace=True,
-                dtype=str              # Ler tudo como string
-            )
-
-            # Remover colunas vazias
-            df_tabela_impressao = df_tabela_impressao.dropna(axis=1, how='all')
-
-            # Manter apenas as 9 primeiras colunas
-            df_tabela_impressao = df_tabela_impressao.iloc[:, :9]
-
-            # Converter todas as colunas para número
-            for i in range(9):
-                df_tabela_impressao[i] = pd.to_numeric(df_tabela_impressao[i], errors='coerce')
-
-            # Remover linhas com primeira coluna inválida
-            df_tabela_impressao = df_tabela_impressao.dropna(subset=[0]).reset_index(drop=True)
-
-            st.success("✅ Tabela de impressão carregada com sucesso!")
-
-        except Exception as e:
-            st.error(f"❌ Erro ao carregar tabela de impressão: {e}")
-            st.code(f"URL: {URL_TABELA_IMPRESSAO}")
-            df_tabela_impressao = pd.DataFrame()
-
-        return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos
+        return df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, papeis_unicos
 
     except Exception as e:
         st.error(f"❌ Erro ao carregar os dados: {e}")
-        return None, None, None, None, None, None, None
+        return None, None, None, None, None, None
 
 # ================== CARREGAR DADOS ==================
-df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, df_tabela_impressao, papeis_unicos = carregar_dados()
+df_compras, df_miolos, df_bolsas, df_divisorias, df_adesivos, papeis_unicos = carregar_dados()
 if df_compras is None:
     st.stop()
 
@@ -175,7 +166,6 @@ def calcular_capa(produto, papel, impressao, quantidade):
     if not produto or not papel or not quantidade or quantidade <= 0:
         return None
 
-    # Extrair base e acabamento
     if "COURO SINTÉTICO" in produto:
         base = produto.replace(" - COURO SINTÉTICO", "").strip()
         acabamento = "COURO"
@@ -185,7 +175,6 @@ def calcular_capa(produto, papel, impressao, quantidade):
     else:
         return None
 
-    # Dimensões abertas da capa
     formatos_abertos = {
         'CADERNETA 9X13': {'larg': 22, 'alt': 15.8},
         'CADERNETA 14X21': {'larg': 33.7, 'alt': 24.2},
@@ -208,7 +197,6 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     larg_capa, alt_capa = formatos_abertos[base]['larg'], formatos_abertos[base]['alt']
 
-    # Função para calcular máximo de peças por folha
     def max_por_folha(folha_l, folha_a, peca_l, peca_a):
         h1 = (folha_l // peca_l) * (folha_a // peca_a)
         h2 = (folha_l // peca_a) * (folha_a // peca_l)
@@ -216,70 +204,67 @@ def calcular_capa(produto, papel, impressao, quantidade):
 
     # ✅ 1. OFFSET
     if acabamento == "POLICROMIA" and impressao and "Offset" in impressao:
-        # Mapeamento: base → URL do CSV específico
         csv_map = {
-            'CADERNETA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_9x13.csv',
-            'CADERNETA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
-            'REVISTA 9X13': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabelaimpressao9x13.csv',
-            'REVISTA 14X21': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
-            'PLANNER WIRE-O A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_A5.csv',
-            'FICHARIO A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
-            'FICHARIO 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
-            'REVISTA 19X25': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_19x25.csv',
-            'CADERNO WIRE-O 20X28': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_20x28.csv',
-            'BLOCO WIRE-O 12X20': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_14x21.csv',
-            'CADERNO WIRE-O 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
-            'CADERNO ORGANIZADOR A5': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
-            'CADERNO ORGANIZADOR 17X24': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_17x24.csv',
-            'FICHARIO A6': 'https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/tabela_impressao_A5.csv'
+            'CADERNETA 9X13': URL_9X13,
+            'CADERNETA 14X21': URL_14X21,
+            'REVISTA 9X13': URL_9X13,
+            'REVISTA 14X21': URL_14X21,
+            'PLANNER WIRE-O A5': URL_A5,
+            'FICHARIO A5': URL_A5,
+            'FICHARIO 17X24': URL_17X24,
+            'REVISTA 19X25': URL_19X25,
+            'CADERNO WIRE-O 20X28': URL_20X28,
+            'BLOCO WIRE-O 12X20': URL_9X13,
+            'CADERNO WIRE-O 17X24': URL_17X24,
+            'CADERNO ORGANIZADOR A5': URL_A5,
+            'CADERNO ORGANIZADOR 17X24': URL_17X24,
+            'FICHARIO A6': URL_A5
         }
 
         url_csv = csv_map.get(base)
         if not url_csv:
-            st.warning(f"⚠️ CSV não encontrado para: {base}")
             return None
 
         try:
-            # Carregar CSV com nomes exatos das colunas
             df_formato = pd.read_csv(url_csv, encoding='utf-8')
-            
-            # Renomear colunas para nomes padronizados
             df_formato.columns = ['LAMINAS', 'VALOR ML', 'QTD FLS']
-            
-            # Converter para número
             df_formato['LAMINAS'] = pd.to_numeric(df_formato['LAMINAS'], errors='coerce')
+            df_formato['VALOR ML'] = pd.to_numeric(df_formato['VALOR ML'], errors='coerce')
             df_formato['QTD FLS'] = pd.to_numeric(df_formato['QTD FLS'], errors='coerce')
-            
-            # Remover linhas inválidas
-            df_formato = df_formato.dropna(subset=['LAMINAS', 'QTD FLS']).reset_index(drop=True)
-            
-            # Ordenar por LAMINAS (crescente)
+            df_formato = df_formato.dropna(subset=['LAMINAS', 'VALOR ML', 'QTD FLS']).reset_index(drop=True)
             df_formato = df_formato.sort_values('LAMINAS')
-
         except Exception as e:
             st.error(f"❌ Erro ao carregar CSV: {e}")
             return None
 
-        # Buscar a primeira linha onde LAMINAS >= quantidade
         for _, row in df_formato.iterrows():
             if quantidade <= row['LAMINAS']:
-                return {"tipo": "offset", "folhas": int(row['QTD FLS']), "m2": None}
+                folhas = int(row['QTD FLS'])
+                valor_ml = row['VALOR ML']
+                return {
+                    "tipo": "offset",
+                    "folhas": folhas,
+                    "m2": None,
+                    "custo_impressao_total": round(valor_ml, 2),
+                    "custo_impressao_unitario": round(valor_ml / quantidade, 6)
+                }
 
-        # Se não encontrou, usa a última linha
         if len(df_formato) > 0:
             ultima = df_formato.iloc[-1]
-            st.warning(f"⚠️ Quantidade ({quantidade}) excede todas as faixas. Usando último valor: {int(ultima['QTD FLS'])} folhas.")
-            return {"tipo": "offset", "folhas": int(ultima['QTD FLS']), "m2": None}
-
-        st.error("❌ Nenhuma faixa válida encontrada no CSV.")
+            folhas = int(ultima['QTD FLS'])
+            valor_ml = ultima['VALOR ML']
+            return {
+                "tipo": "offset",
+                "folhas": folhas,
+                "m2": None,
+                "custo_impressao_total": round(valor_ml, 2),
+                "custo_impressao_unitario": round(valor_ml / quantidade, 6)
+            }
         return None
-    
+
     # ✅ 2. DIGITAL
     if acabamento == "POLICROMIA" and impressao and "Digital" in impressao:
-        # Extrair dimensões do papel (ex: "Couche Brilho 170G/M2 76X112")
-        papel_clean = re.sub(r'g[/]?m2|gsm|g/m²', '', papel, flags=re.IGNORECASE)
-        papel_clean = re.sub(r'\s+', ' ', papel_clean).strip()
-        match = re.search(r'(\d+)\s*[xX×]\s*(\d+)', papel_clean)
+        match = re.search(r'(\d+)\s*[xX×]\s*(\d+)', papel.replace('g/m2', '').replace('gsm', ''))
         if not match:
             return None
         papel_l = float(match.group(1))
@@ -287,28 +272,49 @@ def calcular_capa(produto, papel, impressao, quantidade):
         if papel_l < papel_a:
             papel_l, papel_a = papel_a, papel_l
 
-        # Formato útil da máquina digital
         if "17X24" in base or "20X28" in base:
             util_l, util_a = 56, 33
+            formato_preco = '56x33'
         else:
             util_l, util_a = 47, 33
+            formato_preco = '47x33'
 
-        # Quantidade de pedaços por folha
+        tipo_impressao = None
+        for tipo in ['4/0', '4/1', '1/0', '1/1']:
+            if tipo in impressao:
+                tipo_impressao = tipo
+                break
+        if not tipo_impressao:
+            return None
+
+        preco_unitario = PRECO_DIGITAL[formato_preco][tipo_impressao]
+
+        # Quantas folhas úteis (47x33 ou 56x33) são necessárias?
+        capas_por_folha_util = max_por_folha(util_l, util_a, larg_capa, alt_capa)
+        if capas_por_folha_util == 0:
+            return None
+        folhas_uteis_necessarias = int(np.ceil(quantidade / capas_por_folha_util))
+
+        # Custo total da impressão
+        custo_impressao_total = folhas_uteis_necessarias * preco_unitario
+        custo_impressao_unitario = custo_impressao_total / quantidade
+
+        # Calcular quantidade de folhas do papel (opcional)
         pecas_h = int(papel_l // util_l)
         pecas_v = int(papel_a // util_a)
         total_pecas = pecas_h * pecas_v
         if total_pecas == 0:
             return None
+        folhas_papel = int(np.ceil(folhas_uteis_necessarias / total_pecas))
 
-        # Capas por pedaço (melhor encaixe)
-        capas_por_peca = max_por_folha(util_l, util_a, larg_capa, alt_capa)
-        if capas_por_peca == 0:
-            return None
-
-        # Capas por folha do papel
-        capas_por_folha = total_pecas * capas_por_peca
-        folhas = int(np.ceil(quantidade / capas_por_folha))
-        return {"tipo": "digital", "folhas": folhas, "m2": None}
+        return {
+            "tipo": "digital",
+            "folhas": folhas_papel,
+            "m2": None,
+            "folhas_uteis": folhas_uteis_necessarias,
+            "custo_impressao_total": round(custo_impressao_total, 2),
+            "custo_impressao_unitario": round(custo_impressao_unitario, 6)
+        }
 
     # ✅ 3. COURO SINTÉTICO
     if acabamento == "COURO":
@@ -356,7 +362,7 @@ if not produto_selecionado:
     st.stop()
 
 # === Capa ===
-st.markdown("📘 Capa")
+st.markdown("### 📘 Capa")
 col1, col2, col3 = st.columns(3)
 
 # Papel da capa
@@ -383,7 +389,7 @@ if col3.button("🧮 Calcular Capa"):
         else:
             st.error("Erro no cálculo da capa.")
 
-# ================== INTERFACE DO USUÁRIO (miolo, bolsa, etc) ==================
+# ================== INTERFACE DO USUÁRIO ==================
 st.markdown("Selecione um **miolo**, uma **bolsa**, uma **divisória**, um **adesivo** ou use a opção personalizada.")
 # === Miolo ===
 miolos = sorted(df_miolos['Miolo'].dropna().unique())
@@ -474,13 +480,23 @@ if 'capa_resultado' in st.session_state:
         st.markdown("**Capa**")
         valor = st.session_state.capa_resultado
         tipo = valor['tipo']
-        texto = f"{valor['folhas']} folhas" if tipo != "couro" else f"{valor['m2']} m²"
+        if tipo == "couro":
+            texto = f"{valor['m2']} m²"
+        else:
+            texto = f"{valor['folhas']} folhas"
         st.metric("Consumo", texto)
         with st.expander("Detalhes"):
             st.markdown(f"**Produto:** {produto_selecionado}")
             st.markdown(f"**Papel:** {st.session_state.papel_capa}")
             if tipo != "couro":
                 st.markdown(f"**Impressão:** {st.session_state.impressao_capa}")
+                if 'custo_impressao_total' in valor:
+                    st.markdown(f"**Custo total da impressão:** R$ {valor['custo_impressao_total']:,.2f}".replace('.', ','))
+                    st.markdown(f"**Custo unitário da impressão:** R$ {valor['custo_impressao_unitario']:,.6f}".replace('.', ','))
+                if tipo == "digital" and 'folhas_uteis' in valor:
+                    st.markdown(f"**Folhas úteis (47x33 ou 56x33):** {valor['folhas_uteis']}")
+            else:
+                st.markdown(f"**Consumo:** {valor['m2']} m²")
 
 # Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
@@ -568,10 +584,28 @@ st.subheader("💰 Custo Total Unitário do Produto")
 custo_total = 0.0
 itens = []
 
+# Capa
 if 'capa_resultado' in st.session_state:
-    custo_total += 0  # Aqui você pode adicionar custo real da capa depois
-    itens.append("Capa")
+    valor = st.session_state.capa_resultado
+    tipo = valor['tipo']
 
+    # Custo da impressão da capa
+    if valor.get('custo_impressao_unitario') is not None:
+        custo_total += valor['custo_impressao_unitario']
+        itens.append("Capa (Impressão)")
+
+    # Custo do papel da capa (se não for couro)
+    if tipo != "couro" and st.session_state.papel_capa:
+        df_papel = df_compras[df_compras['PapelLimpo'] == st.session_state.papel_capa]
+        if not df_papel.empty:
+            preco_unitario_papel = df_papel.iloc[0]['ValorUnitario']
+            if valor['folhas']:
+                custo_papel_total = preco_unitario_papel * valor['folhas']
+                custo_papel_unitario = custo_papel_total / quantidade_orcamento
+                custo_total += custo_papel_unitario
+                itens.append("Capa (Papel)")
+
+# Miolo
 if miolo_selecionado != "Personalizado" and custo_miolo:
     custo_total += custo_miolo[0]
     itens.append("Miolo")
@@ -579,6 +613,7 @@ elif miolo_selecionado == "Personalizado" and custo_miolo:
     custo_total += custo_miolo[0]
     itens.append("Miolo (Pers.)")
 
+# Bolsa
 if bolsa_selecionada != "Personalizado" and custo_bolsa:
     custo_total += custo_bolsa[0]
     itens.append("Bolsa")
@@ -586,6 +621,7 @@ elif bolsa_selecionada == "Personalizado" and custo_bolsa:
     custo_total += custo_bolsa[0]
     itens.append("Bolsa (Pers.)")
 
+# Divisória
 if divisoria_selecionada != "Personalizado" and custo_divisoria:
     custo_total += custo_divisoria[0]
     itens.append("Divisória")
@@ -593,6 +629,7 @@ elif divisoria_selecionada == "Personalizado" and custo_divisoria:
     custo_total += custo_divisoria[0]
     itens.append("Divisória (Pers.)")
 
+# Adesivo
 if adesivo_selecionado != "Personalizado" and custo_adesivo:
     custo_total += custo_adesivo[0]
     itens.append("Adesivo")
@@ -601,7 +638,7 @@ elif adesivo_selecionado == "Personalizado" and custo_adesivo:
     itens.append("Adesivo (Pers.)")
 
 if itens:
-    st.success(f"**Custo Total Unitário ({' + '.join(itens)}):** R$ {custo_total:,.2f}".replace('.', ','))
+    st.success(f"**Custo Total Unitário ({' + '.join(itens)}):** R$ {custo_total:,.4f}".replace('.', ','))
 else:
     st.warning("Nenhum item selecionado.")
 
