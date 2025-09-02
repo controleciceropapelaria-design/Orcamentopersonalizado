@@ -1,0 +1,4 @@
+usuario,senha_hashed,nome_completo,role,status
+João Victor,$2b$12$u8/6njSrzHt3XXmKIGu46esj6JHFgyUQ1NEOIhrIBdWET0RsWZV66,João Victor Cardoso Protazio,admin,ativo
+Monica,$2b$12$.ZCYKupATtbay453inyf9.di.HRSbREfK5ayH6/14zRb6E8jp33c6,Monica Ribeiro,user,ativo
+Manuh,$2b$12$26URmvesbo2bH3wo863uHOHgCXX9fF4IvAgnQWdSiG2LaXZTXAiOC,Emanuela caroline,user,ativo
