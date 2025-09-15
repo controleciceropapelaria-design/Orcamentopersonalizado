@@ -9,7 +9,7 @@ BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-des
 USERS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/usuarios.csv"
 CLIENTES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/clientes.csv"
 ORCAMENTOS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/orcamentos_novo.csv"
-TEMPLATES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/templates.csv"
+TEMPLATES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/templates.csv"
 
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
@@ -70,6 +70,7 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
+
 
 
 
