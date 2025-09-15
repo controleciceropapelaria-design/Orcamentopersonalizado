@@ -6,11 +6,10 @@ evitar "valores mágicos" espalhados pelo código.
 """
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
 BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/"
-USERS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/usuarios.csv"
-CLIENTES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/clientes.csv"
-ORCAMENTOS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/orcamentos_novo.csv"
-TEMPLATES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/templates.csv"
-
+USERS_FILE = f"{BASE_URL_GITHUB}data/usuarios.csv"
+CLIENTES_FILE = f"{BASE_URL_GITHUB}data/clientes.csv"
+ORCAMENTOS_FILE = f"{BASE_URL_GITHUB}data/orcamentos_novo.csv"
+TEMPLATES_FILE = f"{BASE_URL_GITHUB}data/templates.csv"
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
 COLUNAS_USUARIOS = ["usuario", "senha_hashed", "nome_completo", "role", "status"]
@@ -70,6 +69,7 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
+
 
 
 
