@@ -6,7 +6,7 @@ evitar "valores mágicos" espalhados pelo código.
 """
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
 BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/"
-USERS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/usuarios.csv"
+USERS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/usuarios.csv"
 CLIENTES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/clientes.csv"
 ORCAMENTOS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/orcamentos_novo.csv"
 TEMPLATES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/data/templates.csv"
@@ -70,6 +70,7 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
+
 
 
 
