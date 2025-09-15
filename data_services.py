@@ -132,11 +132,23 @@ def load_wireo_table():
 def load_impression_table(url: str):
     """Carrega uma tabela de custos de impressão/serviço a partir de uma URL."""
     df = pd.read_csv(url, encoding='utf-8')
-    # Assume que as colunas relevantes são as 3 primeiras
-    df.columns = ['LAMINAS', 'VALOR_ML', 'QTD_FLS'][:len(df.columns)]
+    
+    # --- A CORREÇÃO ESTÁ AQUI ---
+    # Renomeamos a coluna para corresponder EXATAMENTE ao que a função de cálculo espera.
+    df.columns = ['LAMINAS', 'VALOR ML (R$)', 'QTD_FLS'][:len(df.columns)]
+    
     df['LAMINAS'] = pd.to_numeric(df['LAMINAS'], errors='coerce')
     df['QTD_FLS'] = pd.to_numeric(df['QTD_FLS'], errors='coerce')
-    df = df.dropna(subset=['LAMINAS', 'QTD_FLS']).sort_values('LAMINAS')
+    # Também vamos converter a nova coluna de valor para número, removendo "R$"
+    if 'VALOR ML (R$)' in df.columns:
+        df['VALOR ML (R$)'] = (df['VALOR ML (R$)']
+                              .astype(str)
+                              .str.replace('R$', '', regex=False)
+                              .str.replace(',', '.')
+                              .str.strip())
+        df['VALOR ML (R$)'] = pd.to_numeric(df['VALOR ML (R$)'], errors='coerce')
+
+    df = df.dropna(subset=['LAMINAS', 'QTD_FLS', 'VALOR ML (R$)']).sort_values('LAMINAS')
     return df
 
 def load_mod_ggf_data():
@@ -155,3 +167,13 @@ def load_mod_ggf_data():
     except Exception as e:
         st.error(f"❌ Falha ao carregar a tabela de MOD/GGF: {e}")
         return pd.DataFrame()
+    
+def load_leather_materials(direct_purchases_cats: dict) -> list:
+    """
+    Filtra o dicionário de compras diretas e retorna uma lista ordenada
+    de materiais da categoria 'COURO'.
+    """
+    if "COURO" in direct_purchases_cats:
+        return sorted([item['NomeLimpo'] for item in direct_purchases_cats["COURO"]])
+    return []
+      

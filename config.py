@@ -8,7 +8,8 @@ evitar "valores mágicos" espalhados pelo código.
 DATA_DIR = "data"
 USERS_FILE = f"{DATA_DIR}/usuarios.csv"
 CLIENTES_FILE = f"{DATA_DIR}/clientes.csv"
-ORCAMENTOS_FILE = f"{DATA_DIR}/orcamentos.csv"
+ORCAMENTOS_FILE = f"{DATA_DIR}/orcamentos_novo.csv"
+TEMPLATES_FILE = f"{DATA_DIR}/templates.csv"
 
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
@@ -17,8 +18,10 @@ COLUNAS_CLIENTES = [
     "Nome", "Razao Social", "CNPJ", "Endereco", "CEP", "Cidade", "UF",
     "Inscricao Estadual", "Email", "Telefone", "Forma de Pagamento", "Contato", "Status"
 ]
-COLUNAS_ORCAMENTOS = ["ID", "Usuario", "Cliente", "Produto", "Quantidade", 
-                      "CustoBase", "ComissaoPct", "Markup", "PrecoVenda", "Data"]
+COLUNAS_ORCAMENTOS = ["ID", "OrcamentoGroupID", "Usuario", "NomeOrcamentista", "Cliente", "Produto", "Quantidade", 
+                      "CustoBase", "ComissaoPct", "Markup", "PrecoVenda", "AjustesJSON", 
+                      "SelecoesJSON", "StatusOrcamento", "Data", "PropostaPDF"]
+COLUNAS_TEMPLATES = ["NomeTemplate", "SelecoesJSON"]
 
 # ================== URLs DOS DADOS EXTERNOS (VERSÃO CORRIGIDA E SIMPLIFICADA) ==================
 # Unificamos para uma única fonte de dados, o repositório principal do projeto.
@@ -30,6 +33,8 @@ URL_USO_PAPEL_MIOLO = f"{BASE_URL_GITHUB}usodepapelmiolos.csv"
 URL_USO_PAPEL_BOLSA = f"{BASE_URL_GITHUB}usodepapelbolsa.csv"
 URL_USO_PAPEL_DIVISORIA = f"{BASE_URL_GITHUB}usodepapeldivisoria.csv"
 URL_USO_PAPEL_ADESIVO = f"{BASE_URL_GITHUB}usodepapeladesivo.csv"
+URL_GUARDA_FORRO = f"{BASE_URL_GITHUB}df_guarda_forro.csv"
+URL_GUARDA_VERSO = f"{BASE_URL_GITHUB}df_guarda_verso.csv"
 URL_COMPRA_DIRETA = f"{BASE_URL_GITHUB}compradiretav2.csv"
 URL_TABELA_WIREO = f"{BASE_URL_GITHUB}tabelawireo.csv"
 # URL para a nova tabela de Mão de Obra e Gastos Gerais de Fabricação
