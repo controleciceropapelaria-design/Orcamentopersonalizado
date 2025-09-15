@@ -5,11 +5,11 @@ Armazena constantes, caminhos de arquivo, URLs e mapeamentos para
 evitar "valores mágicos" espalhados pelo código.
 """
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
-BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/"
-USERS_FILE = f"{BASE_URL_GITHUB}data/usuarios.csv"
-CLIENTES_FILE = f"{BASE_URL_GITHUB}data/clientes.csv"
-ORCAMENTOS_FILE = f"{BASE_URL_GITHUB}data/orcamentos_novo.csv"
-TEMPLATES_FILE = f"{BASE_URL_GITHUB}data/templates.csv"
+DATA_DIR = "data"
+USERS_FILE = f"{DATA_DIR}/usuarios.csv"
+CLIENTES_FILE = f"{DATA_DIR}/clientes.csv"
+ORCAMENTOS_FILE = f"{DATA_DIR}/orcamentos_novo.csv"
+TEMPLATES_FILE = f"{DATA_DIR}/templates.csv"
 
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
@@ -18,9 +18,9 @@ COLUNAS_CLIENTES = [
     "Nome", "Razao Social", "CNPJ", "Endereco", "CEP", "Cidade", "UF",
     "Inscricao Estadual", "Email", "Telefone", "Forma de Pagamento", "Contato", "Status"
 ]
-COLUNAS_ORCAMENTOS = ["ID", "OrcamentoGroupID", "Usuario", "NomeOrcamentista", "Cliente", "Produto", "Quantidade", 
-                      "CustoBase", "ComissaoPct", "Markup", "PrecoVenda", "AjustesJSON", 
-                      "SelecoesJSON", "StatusOrcamento", "Data", "PropostaPDF"]
+COLUNAS_ORCAMENTOS = ["ID", "Usuario", "NomeOrcamentista", "Cliente", "Produto", "Quantidade", 
+                      "CustoBase", "ComissaoPct", "Markup", "PrecoVenda",
+                      "AjustesJSON", "Data", "PropostaPDF"]
 COLUNAS_TEMPLATES = ["NomeTemplate", "SelecoesJSON"]
 
 # ================== URLs DOS DADOS EXTERNOS (VERSÃO CORRIGIDA E SIMPLIFICADA) ==================
@@ -70,4 +70,3 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
-
