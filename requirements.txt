@@ -3,4 +3,5 @@ streamlit
 bcrypt
 requests
 docxtpl
+fpdf
 pypandoc
