@@ -5,7 +5,7 @@ Armazena constantes, caminhos de arquivo, URLs e mapeamentos para
 evitar "valores mágicos" espalhados pelo código.
 """
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
-BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/"
+BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/"
 USERS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/usuarios.csv"
 CLIENTES_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/clientes.csv"
 ORCAMENTOS_FILE = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/refs/heads/main/data/orcamentos_novo.csv"
@@ -70,6 +70,7 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
+
 
 
 
