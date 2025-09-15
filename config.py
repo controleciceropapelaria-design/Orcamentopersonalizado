@@ -5,11 +5,11 @@ Armazena constantes, caminhos de arquivo, URLs e mapeamentos para
 evitar "valores mágicos" espalhados pelo código.
 """
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
-DATA_DIR = "data"
-USERS_FILE = f"{DATA_DIR}/usuarios.csv"
-CLIENTES_FILE = f"{DATA_DIR}/clientes.csv"
-ORCAMENTOS_FILE = f"{DATA_DIR}/orcamentos_novo.csv"
-TEMPLATES_FILE = f"{DATA_DIR}/templates.csv"
+BASE_URL_GITHUB = "https://raw.githubusercontent.com/controleciceropapelaria-design/Orcamentoperosnalizado/main/"
+USERS_FILE = f"{BASE_URL_GITHUB}data/usuarios.csv"
+CLIENTES_FILE = f"{BASE_URL_GITHUB}data/clientes.csv"
+ORCAMENTOS_FILE = f"{BASE_URL_GITHUB}data/orcamentos_novo.csv"
+TEMPLATES_FILE = f"{BASE_URL_GITHUB}data/templates.csv"
 
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
