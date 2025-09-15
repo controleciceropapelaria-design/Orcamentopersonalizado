@@ -70,3 +70,4 @@ CSV_MAP_IMPRESSAO = {
     'CADERNO ORGANIZADOR 17X24': f'{BASE_URL_GITHUB}tabela_impressao_17x24.csv',
     'FICHARIO A6': f'{BASE_URL_GITHUB}tabelaimpressaoA5.csv'
 }
+
