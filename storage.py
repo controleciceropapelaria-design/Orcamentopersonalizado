@@ -141,3 +141,69 @@ def save_templates_to_github(df, token, branch="main"):
     repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
     path = "data/templates.csv"
     return save_csv_to_github(df, repo, path, token, branch, commit_message="Update templates.csv via Streamlit")
+
+def delete_file_from_github(repo, path, token, branch="main", commit_message="Delete file via Streamlit"):
+    """
+    Exclui um arquivo de um repositório do GitHub usando a API do GitHub.
+
+    Args:
+        repo (str): O repositório de destino no formato 'usuario/repo'.
+        path (str): O caminho completo do arquivo no repositório (ex: 'dados/meu_arquivo.csv').
+        token (str): Token de acesso pessoal do GitHub com permissão de escrita.
+        branch (str): O branch onde o arquivo será excluído. Padrão é 'main'.
+        commit_message (str): Mensagem de commit para a exclusão.
+
+    Returns:
+        tuple: Código de status e resposta da API do GitHub.
+    """
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}"}
+    # Primeiro, pega o SHA do arquivo
+    get_resp = requests.get(url, headers=headers, params={"ref": branch})
+    if get_resp.status_code != 200:
+        return get_resp.status_code, get_resp.json()
+    sha = get_resp.json().get("sha")
+    data = {
+        "message": commit_message,
+        "sha": sha,
+        "branch": branch
+    }
+    resp = requests.delete(url, headers=headers, json=data)
+    return resp.status_code, resp.json()
+
+def delete_cliente_from_github(nome_cliente, token, branch="main"):
+    """
+    Exclui o arquivo clientes.csv do GitHub e faz upload do novo CSV atualizado.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/clientes.csv"
+    # Exclui o arquivo antigo
+    delete_file_from_github(repo, path, token, branch, commit_message=f"Delete clientes.csv ({nome_cliente}) via Streamlit")
+    # Faz upload do novo arquivo atualizado
+    save_clientes_to_github(st.session_state.df_clientes, token, branch)
+
+def delete_usuario_from_github(usuario, token, branch="main"):
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/usuarios.csv"
+    delete_file_from_github(repo, path, token, branch, commit_message=f"Delete usuarios.csv ({usuario}) via Streamlit")
+    save_usuarios_to_github(st.session_state.df_usuarios, token, branch)
+
+def delete_orcamento_from_github(token, branch="main"):
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/orcamentos_novo.csv"
+    delete_file_from_github(repo, path, token, branch, commit_message="Delete orcamentos_novo.csv via Streamlit")
+    save_orcamentos_to_github(st.session_state.df_orcamentos, token, branch)
+
+def delete_template_from_github(nome_template, token, branch="main"):
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/templates.csv"
+    delete_file_from_github(repo, path, token, branch, commit_message=f"Delete templates.csv ({nome_template}) via Streamlit")
+    save_templates_to_github(st.session_state.df_templates, token, branch)
+
+def delete_proposta_pdf_from_github(filename, token, branch="main"):
+    """
+    Exclui um PDF de proposta da pasta Propostas no GitHub.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = f"Propostas/{filename}"
+    return delete_file_from_github(repo, path, token, branch, commit_message=f"Delete proposta {filename} via Streamlit")

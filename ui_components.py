@@ -538,6 +538,8 @@ def display_admin_panel():
                     if st.button("Excluir Cliente Permanentemente", type="primary"):
                         st.session_state.df_clientes = st.session_state.df_clientes.drop(index=client_index).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
+                        # Exclui do GitHub e reenvia o CSV atualizado
+                        storage.delete_cliente_from_github(selected_client_name, st.secrets["github_token"])
                         st.warning(f"Cliente '{selected_client_name}' foi excluído.")
                         st.rerun()
 
@@ -580,6 +582,7 @@ def display_admin_panel():
                     if st.button("Excluir Template Permanentemente", type="primary"):
                         st.session_state.df_templates = st.session_state.df_templates.drop(index=template_index).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_templates, config.TEMPLATES_FILE)
+                        storage.delete_template_from_github(selected_template_name, st.secrets["github_token"])
                         st.warning(f"Template '{selected_template_name}' foi excluído.")
                         st.rerun()
 
@@ -598,7 +601,7 @@ def display_admin_panel():
                 "Quantidade": "Qtd.",
                 "Produto": "Produto",
                 "Data": "Data",
-                "Proposta PDF": "Proposta PDF"
+                "PropostaPDF": "Proposta PDF"
             }, inplace=True)
             # CORREÇÃO: converte colunas object para número ou string
             for col in df_display_admin.columns:
@@ -625,18 +628,6 @@ def display_admin_panel():
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
                     try:
                         ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                         if ajustes_lista_admin:
                             st.write("**Ajustes Manuais Aplicados:**")
                             df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
