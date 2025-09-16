@@ -9,7 +9,6 @@ from datetime import datetime
 import re
 import json
 import os
-import unicodedata
 
 # Importa os módulos da aplicação
 import config
@@ -50,45 +49,6 @@ def budget_page():
     """Renderiza a página principal de criação de orçamento."""
     st.title("📐 Criação de Orçamento")
 
-    # --- Dinâmica de edição: aviso e botão cancelar ---
-    editing_id = st.session_state.get('editing_id')
-    if editing_id:
-        st.info(f"📝 Editando orçamento: {editing_id}")
-        if st.button("Cancelar edição"):
-            st.session_state.pop('editing_id')
-            if 'edit_loaded' in st.session_state:
-                st.session_state.pop('edit_loaded')
-            st.session_state['page'] = "Histórico de Orçamentos"
-            st.rerun()
-
-    # Carrega os dados do orçamento para edição, se houver
-    if editing_id and not st.session_state.get('edit_loaded'):
-        df = st.session_state.df_orcamentos
-        row = df[df['ID'] == editing_id]
-        if not row.empty:
-            row = row.iloc[0]
-            selecoes = json.loads(row.get("SelecoesJSON", "{}"))
-            for key, value in selecoes.items():
-                st.session_state[key] = value
-            # Preenche campos principais do formulário
-            st.session_state['selected_client'] = row['Cliente']
-            st.session_state['budget_quantity'] = int(row['Quantidade']) if str(row['Quantidade']).isdigit() else 15000
-            st.session_state['sel_produto'] = row['Produto']
-            # Preenche campos de acabamento
-            def busca_acabamento(tipo, opcoes):
-                # Prioriza valor salvo explicitamente
-                if tipo in selecoes:
-                    return selecoes[tipo]
-                # Busca valor que bate com as opções
-                for v in selecoes.values():
-                    if v in opcoes:
-                        return v
-                return opcoes[0]
-            st.session_state['selected_laminacao'] = busca_acabamento('selected_laminacao', ["Nenhum", "Laminação Fosca"])
-            st.session_state['selected_hot_stamping'] = busca_acabamento('selected_hot_stamping', ["Nenhum", "Interno (sem custo adicional)", "Externo Pequeno", "Externo Grande"])
-            st.session_state['selected_silk'] = busca_acabamento('selected_silk', ["Nenhum", "1/0","2/0","3/0","4/0"])
-            st.session_state['edit_loaded'] = True
-
     # --- Carregar todos os dados externos ---
     try:
         df_paper = ds.load_paper_purchases()
@@ -105,11 +65,13 @@ def budget_page():
     except Exception as e:
         st.error(f"❌ Erro fatal ao carregar dados externos: {e}")
         st.stop()
-
+    
     # --- LÓGICA DE TEMPLATES ---
     st.header("Modelo de Orçamento")
     template_list = [""] + st.session_state.df_templates["NomeTemplate"].tolist()
+    
     selected_template_name = st.selectbox("Carregar um modelo de orçamento", template_list, key="load_template_selector")
+
     if selected_template_name and st.button("Carregar Modelo"):
         template_data = st.session_state.df_templates[st.session_state.df_templates["NomeTemplate"] == selected_template_name].iloc[0]
         selections = json.loads(template_data["SelecoesJSON"])
@@ -121,48 +83,34 @@ def budget_page():
     # --- Entradas do Usuário ---
     col1, col2 = st.columns([2, 1])
     client_list = [""] + st.session_state.df_clientes["Nome"].tolist()
-    selected_client = col1.selectbox(
-        "Selecione o Cliente",
-        client_list,
-        index=client_list.index(st.session_state.get('selected_client', "")) if st.session_state.get('selected_client', "") in client_list else 0
-    )
-    budget_quantity = col2.number_input(
-        "Quantidade total do orçamento:",
-        min_value=1,
-        value=st.session_state.get('budget_quantity', 15000),
-        step=100
-    )
+    selected_client = col1.selectbox("Selecione o Cliente", client_list)
+    budget_quantity = col2.number_input("Quantidade total do orçamento:", min_value=1, value=15000, step=100)
 
     st.divider()
 
     all_costs = []
     direct_purchases_render = direct_purchases_cats.copy()
+
+    # --- CORREÇÃO DEFINITIVA DO COURO ---
+    # Cria uma cópia do dicionário de compras diretas
+    direct_purchases_render = direct_purchases_cats.copy()
+    # Remove a categoria "COURO" incondicionalmente da cópia que será renderizada
     direct_purchases_render.pop("COURO", None)
 
     # --- Lógica da Capa ---
     with st.container(border=True):
         st.markdown("### 📕 Capa")
-        # Corrige conflito de Session State e valor default do selectbox
-        produto_options = [""] + sorted(config.PRODUTOS_BASE)
-        if 'sel_produto' in st.session_state and st.session_state['sel_produto'] in produto_options:
-            selected_product = st.selectbox(
-                "Selecione o produto:",
-                options=produto_options,
-                key="sel_produto"
-            )
-        else:
-            selected_product = st.selectbox(
-                "Selecione o produto:",
-                options=produto_options,
-                key="sel_produto",
-                index=0
-            )
+        selected_product = st.selectbox("Selecione o produto:", options=[""] + sorted(config.PRODUTOS_BASE), key="sel_produto")
+# --- NOVO: Seletor de Hot Stamping ---
         hot_stamping_options = ["Nenhum", "Interno (sem custo adicional)", "Externo Pequeno", "Externo Grande"]
-        selected_hot_stamping = st.selectbox("Acabamento: Hot Stamping", options=hot_stamping_options, key="selected_hot_stamping")
+        selected_hot_stamping = st.selectbox("Acabamento: Hot Stamping", options=hot_stamping_options)
+# --- NOVO: Seletor de Laminação ---
         laminacao_options = ["Nenhum", "Laminação Fosca"]
-        selected_laminacao = st.selectbox("Acabamento: Laminação", options=laminacao_options, key="selected_laminacao")
+        selected_laminacao = st.selectbox("Acabamento: Laminação", options=laminacao_options)
+# --- NOVO: Seletor de SILK ---
         silk_options = ["Nenhum", "1/0","2/0","3/0","4/0"]
-        selected_silk = st.selectbox("Acabamento: SILK", options=silk_options, key="selected_silk")
+        selected_silk = st.selectbox("Acabamento: SILK", options=silk_options)
+        #Calculo de Capa
         cover_cost_result = None
         if selected_product:
             if "COURO SINTÉTICO" in selected_product:
@@ -173,14 +121,8 @@ def budget_page():
                 else:
                     selected_leather = st.selectbox("Material da Capa", options=[""] + leather_materials, key="sel_capa_couro")
                     if selected_leather:
-                        # NOVO: cálculo com aproveitamento da faca
-                        cover_cost_result = calc.calculate_synthetic_leather_cover_cost(
-                            selected_product,
-                            selected_leather,
-                            budget_quantity,
-                            direct_purchases_cats
-                        )
-            else:
+                        cover_cost_result = calc.calculate_leather_cover_cost(selected_leather, direct_purchases_cats)
+            else: # Policromia
                 paper_cover_options = [p for p in paper_options if 'couche' in p.lower() or 'policromia' in p.lower()]
                 c1, c2 = st.columns(2)
                 selected_paper_cover = c1.selectbox("Papel da capa", options=[""] + sorted(paper_cover_options), key="sel_capa_papel")
@@ -195,6 +137,7 @@ def budget_page():
                             cover_cost_result = calc.calculate_offset_cover_cost(product_base, budget_quantity, selected_paper_cover, df_paper, df_impression)
                     elif "Digital" in impression_type:
                         cover_cost_result = calc.calculate_digital_cover_cost(selected_product, selected_paper_cover, impression_type, budget_quantity, df_paper)
+            
             if cover_cost_result and not cover_cost_result.get("error"):
                 paper_cost = cover_cost_result.get("paper_cost_unit", 0)
                 if paper_cost > 0:
@@ -212,9 +155,9 @@ def budget_page():
             cost = hot_stamping_cost_result.get("total_cost_unit", 0)
             if cost > 0:
                 all_costs.append({
-                    "name": "Acabamento - Hot Stamping",
-                    "cost": cost,
-                    "details": hot_stamping_cost_result.get("details", "Acabamento - Hot Stamping"),
+                    "name": "Acabamento - Hot Stamping", 
+                    "cost": cost, 
+                    "details": hot_stamping_cost_result.get("details", ""), 
                     "category": "Impressão/Serviços"
                 })
         elif hot_stamping_cost_result and hot_stamping_cost_result.get("error"):
@@ -346,27 +289,29 @@ def budget_page():
             st.warning(f"⚠️ Produto '{selected_product}' não encontrado na tabela de custos MOD/GGF.")
 
  # --- SALVAR TEMPLATE (LÓGICA CORRIGIDA E ROBUSTA) ---
-    if not editing_id:
-        st.divider()
-        with st.container(border=True):
-            st.subheader("Salvar como Modelo")
-            new_template_name = st.text_input("Nome do novo modelo")
-            if st.button("Salvar Configuração Atual como Modelo"):
-                if not new_template_name:
-                    st.warning("Por favor, dê um nome ao modelo.")
-                elif new_template_name in st.session_state.df_templates["NomeTemplate"].values:
-                    st.error(f"O nome de modelo '{new_template_name}' já existe.")
-                else:
-                    current_selections = {}
-                    for key, value in st.session_state.items():
-                        if key.startswith(('sel_', 'paper_', 'mat_cost_', 'serv_cost_', 'util_', 'rings_', 'vu_', 'cd_')):
-                            current_selections[key] = value
-                    new_template = {"NomeTemplate": new_template_name, "SelecoesJSON": json.dumps(current_selections)}
-                    new_template_df = pd.DataFrame([new_template])
-                    st.session_state.df_templates = pd.concat([st.session_state.df_templates, new_template_df], ignore_index=True)
-                    storage.save_csv(st.session_state.df_templates, config.TEMPLATES_FILE)
-                    st.success(f"Modelo '{new_template_name}' salvo com sucesso!")
-                    st.rerun()
+    st.divider()
+    with st.container(border=True):
+        st.subheader("Salvar como Modelo")
+        new_template_name = st.text_input("Nome do novo modelo")
+        if st.button("Salvar Configuração Atual como Modelo"):
+            if not new_template_name:
+                st.warning("Por favor, dê um nome ao modelo.")
+            elif new_template_name in st.session_state.df_templates["NomeTemplate"].values:
+                st.error(f"O nome de modelo '{new_template_name}' já existe.")
+            else:
+                current_selections = {}
+                # Itera sobre todas as chaves no estado da sessão
+                for key, value in st.session_state.items():
+                    # --- MUDANÇA AQUI: Captura TODAS as chaves relevantes ---
+                    if key.startswith(('sel_', 'paper_', 'mat_cost_', 'serv_cost_', 'util_', 'rings_', 'vu_', 'cd_')):
+                        current_selections[key] = value
+                
+                new_template = {"NomeTemplate": new_template_name, "SelecoesJSON": json.dumps(current_selections)}
+                new_template_df = pd.DataFrame([new_template])
+                st.session_state.df_templates = pd.concat([st.session_state.df_templates, new_template_df], ignore_index=True)
+                storage.save_csv(st.session_state.df_templates, config.TEMPLATES_FILE)
+                st.success(f"Modelo '{new_template_name}' salvo com sucesso!")
+                st.rerun()
 
     # --- Resultados e Cálculo do Preço de Venda ---
     st.divider()
@@ -392,6 +337,7 @@ def budget_page():
         # Seção de Ajustes Dinâmicos
         if st.session_state.get("role") in ["admin", "orcamentista"]:
             with st.container(border=True):
+                # ... (código dos ajustes que já funciona)
                 st.markdown("##### Ajustes Manuais de Custo")
                 with st.form("add_ajuste_form", clear_on_submit=True):
                     c1, c2 = st.columns(2)
@@ -400,7 +346,7 @@ def budget_page():
                     add_button = st.form_submit_button("Adicionar Ajuste")
                     if add_button and new_ajuste_desc and new_ajuste_valor != 0:
                         st.session_state.ajustes.append({"descricao": new_ajuste_desc, "valor": new_ajuste_valor})
-                        st.experimental_rerun()
+                        st.rerun()
                 if st.session_state.ajustes:
                     st.write("**Ajustes Adicionados:**")
                     for i, ajuste in enumerate(st.session_state.ajustes):
@@ -409,7 +355,7 @@ def budget_page():
                         c2.write(f"R$ {ajuste['valor']:,.2f}")
                         if c3.button("Remover", key=f"remove_ajuste_{i}"):
                             st.session_state.ajustes.pop(i)
-                            st.experimental_rerun()
+                            st.rerun()
         
         # Detalhes dos Custos
         with st.expander("Ver detalhes do custo"):
@@ -477,32 +423,34 @@ def budget_page():
                     else:
                         quantidade = budget_quantity
                 # ELÁSTICO, FITA DE CETIM, PAPELÃO (Aviamentos)
+                elif (
+                    "ELASTICO" in item["name"]
+                    or "FITA DE CETIM" in item["name"]
+                    or "PAPELAO" in item["name"]
+                    or "ILHOS" in item["name"]
+                    or "FERRAGEM" in item["name"]
+                    or "REBITES" in item["name"]
+                    or "PENDENTE" in item["name"]
+                    or "SACO ADESIVADO" in item["name"]
+                    or "WIRE-O" in item["name"]
+                ):
+                    # Usa o aproveitamento informado pelo usuário
+                    aproveitamento = item.get("aproveitamento", 1)
+                    quantidade = aproveitamento * budget_quantity
+                # MOD+GGF
+                elif "MOD + GGF" in item["name"]:
+                    quantidade = budget_quantity    
+                # ACABAMENTO HOT STAMPING
+                elif "Acabamento - Hot Stamping" in item["name"]:
+                    quantidade = budget_quantity    
+                # ACABAMENTO LAMINAÇÃO
+                elif "Acabamento - Laminação" in item["name"]:
+                    quantidade = budget_quantity
+                # ACABAMENTO SILK
+                elif "Acabamento - Silk" in item["name"]:   
+                    quantidade = budget_quantity
                 else:
-                    # --- NOVO: Verificação robusta para aviamentos ---
-                    def normalize(s):
-                        return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').lower()
-                    aviamentos = [
-                        "elastico", "fita de cetim", "papelao", "ilhos", "ferragem",
-                        "rebites", "pendente", "saco adesivado", "wire-o"
-                    ]
-                    name_norm = normalize(item["name"])
-                    if any(av in name_norm for av in aviamentos):
-                        aproveitamento = item.get("aproveitamento", 1)
-                        quantidade = aproveitamento * budget_quantity
-                    # MOD+GGF
-                    elif "MOD + GGF" in item["name"]:
-                        quantidade = budget_quantity    
-                    # ACABAMENTO HOT STAMPING
-                    elif "Acabamento - Hot Stamping" in item["name"]:
-                        quantidade = budget_quantity    
-                    # ACABAMENTO LAMINAÇÃO
-                    elif "Acabamento - Laminação" in item["name"]:
-                        quantidade = budget_quantity
-                    # ACABAMENTO SILK
-                    elif "Acabamento - Silk" in item["name"]:   
-                        quantidade = budget_quantity
-                    else:
-                        quantidade = ""
+                    quantidade = ""
                 row = item.copy()
                 row["Quantidade"] = quantidade
                 cost_rows.append(row)
@@ -513,23 +461,7 @@ def budget_page():
             if "cost" in cost_df.columns:
                 cost_df["cost"] = cost_df["cost"].round(2)
             if "Quantidade" in cost_df.columns:
-                # NOVO: mostra casas decimais para Couro Sintético, inteiro para os demais
-                def round_quantidade(row):
-                    if "Capa - Papel/Material" in row["name"] and cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")):
-                        return round(row["Quantidade"], 2)
-                    # Alternativamente, verifica se é Couro Sintético pelo details
-                    if cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")) and row["name"].startswith("Capa"):
-                        return round(row["Quantidade"], 2)
-                    return round(row["Quantidade"], 0)
-                cost_df["Quantidade"] = cost_df.apply(round_quantidade, axis=1)
-            cost_df = cost_df.copy()
-            for col in cost_df.columns:
-                # Se a coluna for object, tenta converter para número, senão converte para string
-                if cost_df[col].dtype == "object":
-                    try:
-                        cost_df[col] = pd.to_numeric(cost_df[col])
-                    except Exception:
-                        cost_df[col] = cost_df[col].astype(str)
+                cost_df["Quantidade"] = cost_df["Quantidade"].round(0)
             st.dataframe(
                 cost_df.drop(columns=['category'], errors='ignore'),
                 width='stretch',
@@ -562,51 +494,16 @@ def budget_page():
         st.metric("Preço de Venda Unitário Sugerido", f"R$ {preco_venda:,.2f}".replace('.', ','))
         st.divider()
         
-        from generate_pdf import generate_proposal_pdf
-        import os
-                
-        from collections import defaultdict
-
+        # Salvar Orçamento e Gerar Proposta em PDF
         if st.button("💾 Salvar e Gerar Proposta de Orçamento"):
             if not selected_client or not selected_product:
                 st.warning("Selecione um cliente e um produto para salvar o orçamento.")
             else:
+                # Defina a descrição do produto conforme sua lógica
+                descricao_produto = f"{selected_product} - {budget_quantity} unidades"
+
                 validade_orcamento = "10 dias"
                 prazo_entrega = "15 dias"
-
-                # Agrupamento e descrição dos componentes (igual ao seu código)
-                grupos = defaultdict(list)
-                for item in all_costs:
-                    nome = item.get("name", "").strip()
-                    detalhes = item.get("details", "")
-                    nome_lower = nome.lower()
-                    if "mod + ggf" in nome_lower:
-                        continue
-                    if nome_lower.startswith("capa"):
-                        grupos["Capa"].append(f"{nome}: {detalhes}")
-                    elif nome_lower.startswith("guarda"):
-                        grupos["Guarda"].append(f"{nome}: {detalhes}")
-                    elif nome_lower.startswith("miolo"):
-                        grupos["Miolo"].append(f"{nome}: {detalhes}")
-                    elif nome_lower.startswith("acabamento"):
-                        grupos["Acabamento"].append(f"{nome}: {detalhes}")
-                    elif nome_lower.startswith("bolsa") or nome_lower.startswith("servico de terceiro - bolsa"):
-                        grupos["Bolsa"].append(f"{nome}: {detalhes}")
-                    else:
-                        grupos[nome].append(f"{nome}: {detalhes}")
-
-                ordem = ["Capa", "Guarda", "Miolo", "Bolsa"]
-                descricao_componentes = []
-                for grupo in ordem:
-                    if grupos[grupo]:
-                        descricao_componentes.append(f"{grupo}:\n" + "\n".join(grupos[grupo]))
-                for grupo in grupos:
-                    if grupo not in ordem and grupo != "Acabamento":
-                        descricao_componentes.append(f"{grupo}:\n" + "\n".join(grupos[grupo]))
-                if grupos["Acabamento"]:
-                    descricao_componentes.append("Acabamento:\n" + "\n".join(grupos["Acabamento"]))
-
-                descricao_produto = "\n\n".join(descricao_componentes)
 
                 proposal_data = {
                     "data": datetime.now().strftime("%d/%m/%Y"),
@@ -623,100 +520,43 @@ def budget_page():
                     "prazo_de_entrega": prazo_entrega,
                 }
 
-                 # Define o diretório de propostas
-                propostas_dir = r"\\Servidor\d\projeto_orcamento-main\Projeto Personalizado\Propostas"
-                os.makedirs(propostas_dir, exist_ok=True)
-                output_pdf = os.path.join(
-                    propostas_dir,
-                    f"Proposta_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                )
+                import os
+                from generate_pdf import generate_proposal_pdf
+
+                # Salva PDF na pasta Propostas
+                propostas_dir = "Propostas"
+                if not os.path.exists(propostas_dir):
+                    os.makedirs(propostas_dir)
+                output_pdf = os.path.join(propostas_dir, f"Proposta_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
                 generate_proposal_pdf(proposal_data, output_pdf)
+                pdf_path = output_pdf
 
-                # --- Lógica de edição ou novo orçamento ---
-                editing_id = st.session_state.get('editing_id')
-                selecoes = {key: st.session_state[key] for key in st.session_state if key.startswith(('sel_', 'paper_', 'mat_cost_', 'serv_cost_', 'util_', 'rings_', 'vu_', 'cd_'))}
-                # Adiciona campos de capa e acabamento explicitamente
-                for extra_key in [
-                    'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                    'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                ]:
-                    if extra_key in st.session_state:
-                        selecoes[extra_key] = st.session_state[extra_key]
-
-                if editing_id:
-                    # Atualiza orçamento existente e salva versão anterior acumulando todas as versões
-                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == editing_id].index[0]
-                    orcamento_antigo = st.session_state.df_orcamentos.loc[idx].to_dict()
-                    versoes = []
-                    try:
-                        versoes = json.loads(st.session_state.df_orcamentos.loc[idx].get("VersoesJSON", "[]"))
-                    except Exception:
-                        versoes = []
-                    versoes.append({
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "data": orcamento_antigo
-                    })
-                    st.session_state.df_orcamentos.loc[idx, "VersoesJSON"] = json.dumps(versoes)
-                    st.session_state.df_orcamentos.loc[idx, "VersoesOrcamento"] = len(versoes)
-                    # Atualiza orçamento
-                    st.session_state.df_orcamentos.loc[idx, "Cliente"] = selected_client
-                    st.session_state.df_orcamentos.loc[idx, "Produto"] = selected_product
-                    st.session_state.df_orcamentos.loc[idx, "Quantidade"] = budget_quantity
-                    st.session_state.df_orcamentos.loc[idx, "CustoBase"] = round(custo_componentes, 4)
-                    st.session_state.df_orcamentos.loc[idx, "ComissaoPct"] = total_comissao_percent
-                    st.session_state.df_orcamentos.loc[idx, "Markup"] = markup
-                    st.session_state.df_orcamentos.loc[idx, "PrecoVenda"] = round(preco_venda, 2)
-                    st.session_state.df_orcamentos.loc[idx, "AjustesJSON"] = json.dumps(st.session_state.ajustes)
-                    st.session_state.df_orcamentos.loc[idx, "Data"] = datetime.now().strftime("%d/%m/%Y")
-                    st.session_state.df_orcamentos.loc[idx, "PropostaPDF"] = output_pdf
-                    st.session_state.df_orcamentos.loc[idx, "SelecoesJSON"] = json.dumps(selecoes)
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    st.session_state.ajustes = []
-                    st.session_state.pop('editing_id')
-                    if 'edit_loaded' in st.session_state:
-                        st.session_state.pop('edit_loaded')
-                    st.success(f"Orçamento {editing_id} editado com sucesso!")
-                else:
-                    # Cria novo orçamento
-                    new_budget = {
-                        "ID": f"ORC{int(datetime.now().timestamp())}",
-                        "Usuario": st.session_state.username,
-                        "NomeOrcamentista": st.session_state.full_name,
-                        "Cliente": selected_client,
-                        "Produto": selected_product,
-                        "Quantidade": budget_quantity,
-                        "CustoBase": round(custo_componentes, 4),
-                        "ComissaoPct": total_comissao_percent,
-                        "Markup": markup,
-                        "PrecoVenda": round(preco_venda, 2),
-                        "AjustesJSON": json.dumps(st.session_state.ajustes),
-                        "Data": datetime.now().strftime("%d/%m/%Y"),
-                        "PropostaPDF": output_pdf,
-                        "SelecoesJSON": json.dumps(selecoes),
-                        "StatusOrcamento": "Pendente",
-                        "VersoesJSON": json.dumps([]),
-                        "VersoesOrcamento": 1
-                    }
-                    # Antes de concatenar:
-                    for col in config.COLUNAS_ORCAMENTOS:
-                        if col not in new_budget:
-                            new_budget[col] = ""  # valor padrão
-
-                    new_budget_df = pd.DataFrame([new_budget])
-
-                    # Garante que todos os campos sejam string ou número
-                    for col in new_budget_df.columns:
-                        if new_budget_df[col].dtype == "object":
-                            new_budget_df[col] = new_budget_df[col].astype(str)
-                    st.session_state.df_orcamentos = pd.concat([st.session_state.df_orcamentos, new_budget_df], ignore_index=True)[config.COLUNAS_ORCAMENTOS]
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    st.session_state.ajustes = []
-                    st.success(f"Orçamento {new_budget['ID']} salvo com sucesso!")
+                # Salva o orçamento no histórico, incluindo o caminho do PDF
+                new_budget = {
+                    "ID": f"ORC{int(datetime.now().timestamp())}",
+                    "Usuario": st.session_state.username,
+                    "NomeOrcamentista": st.session_state.full_name,
+                    "Cliente": selected_client,
+                    "Produto": selected_product,
+                    "Quantidade": budget_quantity,
+                    "CustoBase": round(custo_componentes, 4),
+                    "ComissaoPct": total_comissao_percent,
+                    "Markup": markup,
+                    "PrecoVenda": round(preco_venda, 2),
+                    "AjustesJSON": json.dumps(st.session_state.ajustes),
+                    "Data": datetime.now().strftime("%d/%m/%Y"),
+                    "PropostaPDF": pdf_path
+                }
+                new_budget_df = pd.DataFrame([new_budget])
+                st.session_state.df_orcamentos = pd.concat([st.session_state.df_orcamentos, new_budget_df], ignore_index=True)[config.COLUNAS_ORCAMENTOS]
+                storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                st.session_state.ajustes = []
 
                 # Download automático do PDF
-                if os.path.exists(output_pdf):
-                    with open(output_pdf, "rb") as fpdf:
-                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(output_pdf))
+                if pdf_path and os.path.exists(pdf_path) and pdf_path.endswith(".pdf"):
+                    with open(pdf_path, "rb") as fpdf:
+                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
+                st.success(f"Orçamento {new_budget['ID']} salvo com sucesso!")
 
 # ================== FLUXO PRINCIPAL DA APLICAÇÃO ==================
 def main():
@@ -753,19 +593,15 @@ def main():
 
     # --- Bloco de Lógica para usuário LOGADO ---
     else:
+        
+        # Esta lista contém as páginas visíveis para TODOS os usuários logados.
         page_options = ["Orçamento", "Cadastro de Clientes", "Histórico de Orçamentos"]
+        # A página de admin só é adicionada se o usuário tiver a role correta.
         if st.session_state.get("role") == "admin":
             page_options.append("Painel Admin")
 
         st.sidebar.success(f"Bem-vindo, {st.session_state.full_name}!")
-        # Renderiza o menu lateral de navegação sempre, mesmo durante edição
-        page = st.session_state.get('page')
-        if page not in page_options:
-            page = st.sidebar.radio("Navegação", page_options)
-            st.session_state['page'] = page
-        else:
-            page = st.sidebar.radio("Navegação", page_options, index=page_options.index(page))
-            st.session_state['page'] = page
+        page = st.sidebar.radio("Navegação", page_options)
 
         if st.sidebar.button("Sair"):
             for key in list(st.session_state.keys()):
