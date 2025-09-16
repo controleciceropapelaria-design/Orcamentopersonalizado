@@ -718,6 +718,18 @@ def budget_page():
                     with open(output_pdf, "rb") as fpdf:
                         st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(output_pdf))
 
+# Exemplo: salvar orçamentos no GitHub
+storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+
+# Exemplo: salvar clientes no GitHub
+storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
+
+# Exemplo: salvar usuários no GitHub
+storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
+
+# Exemplo: salvar templates no GitHub
+storage.save_templates_to_github(st.session_state.df_templates, st.secrets["github_token"])
+
 # ================== FLUXO PRINCIPAL DA APLICAÇÃO ==================
 def main():
     """Função principal que controla o fluxo da aplicação."""

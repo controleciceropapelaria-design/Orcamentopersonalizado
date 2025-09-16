@@ -8,6 +8,8 @@ import os
 import pandas as pd
 import streamlit as st
 from pandas.errors import EmptyDataError # <--- ADICIONE ESTA LINHA
+import requests
+import base64
 
 def load_csv(file_path: str, columns: list) -> pd.DataFrame:
     """
@@ -72,3 +74,70 @@ def initialize_session_state_df(key: str, file_path: str, columns: list):
     """
     if key not in st.session_state:
         st.session_state[key] = load_csv(file_path, columns)
+
+def save_csv_to_github(df, repo, path, token, branch="main", commit_message="Update CSV via Streamlit"):
+    """
+    Salva um DataFrame como CSV em um repositório do GitHub usando a API do GitHub.
+
+    Args:
+        df (pd.DataFrame): O DataFrame a ser salvo.
+        repo (str): O repositório de destino no formato 'usuario/repo'.
+        path (str): O caminho completo do arquivo no repositório (ex: 'dados/meu_arquivo.csv').
+        token (str): Token de acesso pessoal do GitHub com permissão de escrita.
+        branch (str): O branch onde o arquivo será salvo. Padrão é 'main'.
+        commit_message (str): Mensagem de commit para a alteração. Padrão é 'Update CSV via Streamlit'.
+
+    Returns:
+        tuple: Código de status e resposta da API do GitHub.
+    """
+    # Lê o conteúdo atual (para pegar o SHA)
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}"}
+    get_resp = requests.get(url, headers=headers, params={"ref": branch})
+    sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
+
+    csv_content = df.to_csv(index=False).encode()
+    b64_content = base64.b64encode(csv_content).decode()
+
+    data = {
+        "message": commit_message,
+        "content": b64_content,
+        "branch": branch,
+    }
+    if sha:
+        data["sha"] = sha
+
+    resp = requests.put(url, headers=headers, json=data)
+    return resp.status_code, resp.json()
+
+def save_usuarios_to_github(df, token, branch="main"):
+    """
+    Salva o DataFrame de usuários no GitHub.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/usuarios.csv"
+    return save_csv_to_github(df, repo, path, token, branch, commit_message="Update usuarios.csv via Streamlit")
+
+def save_clientes_to_github(df, token, branch="main"):
+    """
+    Salva o DataFrame de clientes no GitHub.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/clientes.csv"
+    return save_csv_to_github(df, repo, path, token, branch, commit_message="Update clientes.csv via Streamlit")
+
+def save_orcamentos_to_github(df, token, branch="main"):
+    """
+    Salva o DataFrame de orçamentos no GitHub.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/orcamentos_novo.csv"
+    return save_csv_to_github(df, repo, path, token, branch, commit_message="Update orcamentos_novo.csv via Streamlit")
+
+def save_templates_to_github(df, token, branch="main"):
+    """
+    Salva o DataFrame de templates no GitHub.
+    """
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/templates.csv"
+    return save_csv_to_github(df, repo, path, token, branch, commit_message="Update templates.csv via Streamlit")
