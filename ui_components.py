@@ -170,6 +170,8 @@ def display_client_registration_form():
                 new_client_df = pd.DataFrame([client_data])
                 st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)
                 storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
+                # Salva no GitHub após cadastro
+                storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
                 st.success(f"Cliente '{nome}' cadastrado com sucesso!")
                 st.session_state.cep_data = {} # Limpa o cache do CEP
 

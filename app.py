@@ -365,6 +365,8 @@ def budget_page():
                     new_template_df = pd.DataFrame([new_template])
                     st.session_state.df_templates = pd.concat([st.session_state.df_templates, new_template_df], ignore_index=True)
                     storage.save_csv(st.session_state.df_templates, config.TEMPLATES_FILE)
+                    # Salva no GitHub após criar template
+                    storage.save_templates_to_github(st.session_state.df_templates, st.secrets["github_token"])
                     st.success(f"Modelo '{new_template_name}' salvo com sucesso!")
                     st.rerun()
 
@@ -624,13 +626,38 @@ def budget_page():
                 }
 
                  # Define o diretório de propostas
-                propostas_dir = r"\\Servidor\d\projeto_orcamento-main\Projeto Personalizado\Propostas"
-                os.makedirs(propostas_dir, exist_ok=True)
+                propostas_dir = "Propostas"
+                if not os.path.exists(propostas_dir):
+                    os.makedirs(propostas_dir, exist_ok=True)
                 output_pdf = os.path.join(
                     propostas_dir,
                     f"Proposta_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 )
                 generate_proposal_pdf(proposal_data, output_pdf)
+
+                # Salva o PDF também no GitHub (pasta Propostas)
+                with open(output_pdf, "rb") as fpdf:
+                    import base64, requests
+                    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+                    path = f"Propostas/{os.path.basename(output_pdf)}"
+                    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+                    headers = {"Authorization": f"token {st.secrets['github_token']}"}
+                    # Verifica se já existe para pegar o SHA
+                    get_resp = requests.get(url, headers=headers)
+                    sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
+                    b64_content = base64.b64encode(fpdf.read()).decode()
+                    data = {
+                        "message": f"Upload proposta {os.path.basename(output_pdf)} via Streamlit",
+                        "content": b64_content,
+                        "branch": "main"
+                    }
+                    if sha:
+                        data["sha"] = sha
+                    put_resp = requests.put(url, headers=headers, json=data)
+                    if put_resp.status_code in (200, 201):
+                        st.success("Proposta PDF salva no GitHub!")
+                    else:
+                        st.warning("Não foi possível salvar a proposta PDF no GitHub.")
 
                 # --- Lógica de edição ou novo orçamento ---
                 editing_id = st.session_state.get('editing_id')
@@ -671,6 +698,8 @@ def budget_page():
                     st.session_state.df_orcamentos.loc[idx, "PropostaPDF"] = output_pdf
                     st.session_state.df_orcamentos.loc[idx, "SelecoesJSON"] = json.dumps(selecoes)
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    # Salva no GitHub após editar orçamento
+                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                     st.session_state.ajustes = []
                     st.session_state.pop('editing_id')
                     if 'edit_loaded' in st.session_state:
@@ -710,6 +739,8 @@ def budget_page():
                             new_budget_df[col] = new_budget_df[col].astype(str)
                     st.session_state.df_orcamentos = pd.concat([st.session_state.df_orcamentos, new_budget_df], ignore_index=True)[config.COLUNAS_ORCAMENTOS]
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    # Salva no GitHub após criar orçamento
+                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                     st.session_state.ajustes = []
                     st.success(f"Orçamento {new_budget['ID']} salvo com sucesso!")
 
