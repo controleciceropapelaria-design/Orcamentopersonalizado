@@ -82,7 +82,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     # Descrição (normal)
     pdf.set_font("Times", size=8)
     pdf.set_xy(x + w_quantidade, y)
-    pdf.multi_cell(w_descricao, cell_height, descricao_text, border=1, align="L", max_line_height=cell_height)
+    pdf.multi_cell(w_descricao, cell_height, descricao_text, border=1, align="L")
 
     # Unitário (negrito)
     pdf.set_font("Times", "B", 8)
