@@ -191,7 +191,8 @@ def display_client_registration_form():
 
 def display_history_page():
     st.title("📜 Meu Histórico de Orçamentos")
-    
+    import os  # Corrige UnboundLocalError para os.path.exists
+
     user_history = st.session_state.df_orcamentos[
         st.session_state.df_orcamentos["Usuario"] == st.session_state.username
     ].copy()
@@ -287,7 +288,6 @@ def display_history_page():
 
                 # Botão para baixar o PDF da proposta, se existir
                 pdf_path = orcamento_selecionado.get("PropostaPDF", "")
-                import os
                 if pdf_path and os.path.exists(pdf_path):
                     with open(pdf_path, "rb") as fpdf:
                         st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
