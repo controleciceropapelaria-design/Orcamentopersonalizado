@@ -1,1 +1,2 @@
-Nome,Razao Social,CNPJ,Endereco,CEP,Cidade,UF,Email,Telefone,Forma de Pagamento,Contato,Status,Inscriricao Estadual
+Nome,Razao Social,CNPJ,Endereco,CEP,Cidade,UF,Inscricao Estadual,Email,Telefone,Forma de Pagamento,Contato,Status
+Rafael Diniz,DZTECH,111.111.111/0001-11,Rua Adjar de Azevedo,21625-010,Rio de Janeiro,RJ,11.111.11-1,controleciceropapelaria@gmail.com,(21) 98455-5853,PIX,RAFAEL DINIZ SANTOS DA ROCHA,Ativo
