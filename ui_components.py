@@ -124,7 +124,8 @@ def display_client_registration_form():
         nome = col1.text_input("Nome*")
         razao_social = col2.text_input("Razão Social")
         cnpj = col1.text_input("CNPJ")
-        inscricao_estadual = col2.text_input("Inscricao Estadual")  # Corrigido: sem acento e igual ao CSV
+        # Use exatamente o nome da coluna do CSV, sem acento e sem espaço extra
+        inscricao_estadual = col2.text_input("Inscricao Estadual")  # <-- deve ser igual ao config.COLUNAS_CLIENTES
 
         email = col1.text_input("Email*")
         telefone = col2.text_input("Telefone")
@@ -152,6 +153,7 @@ def display_client_registration_form():
             elif not is_valid_email(email):
                 st.error("Formato de email inválido.")
             else:
+                # Garante que o dicionário tem as chaves exatamente como em config.COLUNAS_CLIENTES
                 client_data = {
                     "Nome": nome,
                     "Razao Social": razao_social,
@@ -160,17 +162,17 @@ def display_client_registration_form():
                     "CEP": format_cep(cep_input),
                     "Cidade": cidade,
                     "UF": uf,
-                    "Inscricao Estadual": inscricao_estadual,  # Corrigido: igual ao CSV
+                    "Inscricao Estadual": inscricao_estadual,  # <-- igual ao config.COLUNAS_CLIENTES
                     "Email": email,
                     "Telefone": format_telefone(telefone),
                     "Forma de Pagamento": forma_pagamento,
                     "Contato": contato,
                     "Status": "Ativo"
                 }
-                new_client_df = pd.DataFrame([client_data])
-                st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)
+                # Garante que as colunas estejam na ordem e nomes corretos
+                new_client_df = pd.DataFrame([client_data])[config.COLUNAS_CLIENTES]
+                st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)[config.COLUNAS_CLIENTES]
                 storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
-                # Salva no GitHub após cadastro
                 storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
                 st.success(f"Cliente '{nome}' cadastrado com sucesso!")
                 st.session_state.cep_data = {} # Limpa o cache do CEP
