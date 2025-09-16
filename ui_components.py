@@ -124,7 +124,7 @@ def display_client_registration_form():
         nome = col1.text_input("Nome*")
         razao_social = col2.text_input("Razão Social")
         cnpj = col1.text_input("CNPJ")
-        inscricao_estadual = col2.text_input("Inscrição Estadual")
+        inscricao_estadual = col2.text_input("Inscricao Estadual")  # Corrigido: sem acento e igual ao CSV
 
         email = col1.text_input("Email*")
         telefone = col2.text_input("Telefone")
@@ -160,7 +160,7 @@ def display_client_registration_form():
                     "CEP": format_cep(cep_input),
                     "Cidade": cidade,
                     "UF": uf,
-                    "Inscricao Estadual": inscricao_estadual,
+                    "Inscricao Estadual": inscricao_estadual,  # Corrigido: igual ao CSV
                     "Email": email,
                     "Telefone": format_telefone(telefone),
                     "Forma de Pagamento": forma_pagamento,
