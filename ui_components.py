@@ -157,10 +157,10 @@ def display_client_registration_form():
                     "Razao Social": razao_social,
                     "CNPJ": format_cnpj(cnpj),
                     "Endereco": endereco,
-                    "CEP": format_cep(cep_input), # Usamos o cep_input original
+                    "CEP": format_cep(cep_input),
                     "Cidade": cidade,
                     "UF": uf,
-                    "Inscriricao Estadual": inscricao_estadual,
+                    "Inscricao Estadual": inscricao_estadual,
                     "Email": email,
                     "Telefone": format_telefone(telefone),
                     "Forma de Pagamento": forma_pagamento,
@@ -296,6 +296,8 @@ def display_history_page():
                         import storage, config
                         st.session_state.df_orcamentos.at[idx, "StatusOrcamento"] = "Aprovado"
                         storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        # Salva no GitHub após aprovar
+                        storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                         st.success("Orçamento aprovado!")
                         st.rerun()
                     if col2.button("Suspender Orçamento", key=f"suspender_{id_orcamento}"):
@@ -431,7 +433,6 @@ def display_admin_panel():
     with tab1:
         st.write("### Gerenciamento de Usuários")
         users_df = st.session_state.df_usuarios.copy()
-        
         if users_df.empty:
             st.info("Nenhum usuário cadastrado.")
         else:
@@ -446,9 +447,10 @@ def display_admin_panel():
                         if st.button("✅ Aprovar", key=f"approve_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'status'] = 'ativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                            # Salva no GitHub após aprovar
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.success(f"Usuário {user['usuario']} aprovado!")
                             st.rerun()
-
                 with col2:
                     st.write(f"**Role:** {user['role']}")
                     # Lógica para promover ou rebaixar usuários
@@ -456,29 +458,32 @@ def display_admin_panel():
                         if st.button("⬆️ Promover a Orcamentista", key=f"promote_orc_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'role'] = 'orcamentista'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.success(f"Usuário {user['usuario']} promovido a Orcamentista!")
                             st.rerun()
                     elif user['role'] == 'orcamentista':
                         c1, c2 = st.columns(2)
                         with c1:
-                           if st.button("⬆️ Promover a Admin", key=f"promote_adm_{user['usuario']}"):
+                            if st.button("⬆️ Promover a Admin", key=f"promote_adm_{user['usuario']}"):
                                 st.session_state.df_usuarios.loc[index, 'role'] = 'admin'
                                 storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                                storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                                 st.success(f"Usuário {user['usuario']} promovido a Admin!")
                                 st.rerun()
                         with c2:
                             if st.button("⬇️ Rebaixar para Usuário", key=f"demote_usr_{user['usuario']}"):
                                 st.session_state.df_usuarios.loc[index, 'role'] = 'user'
                                 storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                                storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                                 st.warning(f"Usuário {user['usuario']} rebaixado para Usuário.")
                                 st.rerun()
-
                 with col3:
                     # Impede que o admin desative a si mesmo
                     if user['status'] == 'ativo' and user['usuario'] != st.session_state.username:
                         if st.button("❌ Desativar", key=f"deactivate_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'status'] = 'inativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.warning(f"Usuário {user['usuario']} desativado.")
                             st.rerun()
                 st.divider()
@@ -616,6 +621,18 @@ def display_admin_panel():
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
                     try:
                         ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                         if ajustes_lista_admin:
                             st.write("**Ajustes Manuais Aplicados:**")
                             df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
