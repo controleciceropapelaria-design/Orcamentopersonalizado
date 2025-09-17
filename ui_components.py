@@ -258,10 +258,11 @@ def display_history_page():
                 st.warning("Arquivo PDF não encontrado para esta versão.")
 
         with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
+            # Use uma key única para o selectbox para evitar conflitos de estado
             id_orcamento = st.selectbox(
                 "Selecione o ID do Orçamento",
-                options=user_history['ID'],
-                key="user_hist_id_select"
+                options=list(user_history['ID']),
+                key="user_hist_id_select_details"
             )
             if id_orcamento:
                 orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
@@ -296,40 +297,24 @@ def display_history_page():
                     with open(pdf_path, "rb") as fpdf:
                         st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
 
-                # Lógica dos botões de status
-                idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                if status == "Pendente":
-                    col1, col2 = st.columns(2)
-                    if col1.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}"):
-                        import storage, config
-                        st.session_state.df_orcamentos.at[idx, "StatusOrcamento"] = "Aprovado"
+                # Botões de ação em linha (sempre visíveis)
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                        st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        # Salva no GitHub após aprovar
-                        storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
-                        st.success("Orçamento aprovado!")
+                        storage.delete_orcamento_from_github(st.secrets["github_token"])
+                        st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
                         st.rerun()
-                    if col2.button("Suspender Orçamento", key=f"suspender_{id_orcamento}"):
-                        import storage, config
-                        st.session_state.df_orcamentos.at[idx, "StatusOrcamento"] = "Suspenso"
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        st.warning("Orçamento suspenso.")
+                with col_btn2:
+                    if st.button("Editar Orçamento", key=f"editar_{id_orcamento}_details"):
+                        selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
+                        for key, value in selecoes.items():
+                            st.session_state[key] = value
+                        st.session_state['editing_id'] = id_orcamento
+                        st.session_state['page'] = "Orçamento"
                         st.rerun()
-                elif status == "Aprovado":
-                    if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}"):
-                        import storage, config
-                        st.session_state.df_orcamentos.at[idx, "StatusOrcamento"] = "Finalizado"
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        st.error("Orçamento finalizado.")
-                        st.rerun()
-                # Suspenso e Finalizado não mostram botões
-                
-                if st.button("Editar Orçamento", key=f"editar_{id_orcamento}"):
-                    selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
-                    for key, value in selecoes.items():
-                        st.session_state[key] = value
-                    st.session_state['editing_id'] = id_orcamento  # <-- Aqui você define o ID
-                    st.session_state['page'] = "Orçamento"
-                    st.rerun()    
 
                 ajustes_json = orcamento_selecionado.get('AjustesJSON', '[]')
                 try:
@@ -629,6 +614,21 @@ def display_admin_panel():
                             except Exception:
                                 df_detalhes_admin[col] = df_detalhes_admin[col].astype(str)
                     st.dataframe(df_detalhes_admin)
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
                     try:
                         ajustes_lista_admin = json.loads(ajustes_json_admin)
