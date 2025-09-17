@@ -258,7 +258,11 @@ def display_history_page():
                 st.warning("Arquivo PDF não encontrado para esta versão.")
 
         with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
-            id_orcamento = st.selectbox("Selecione o ID do Orçamento", options=user_history['ID'], key="user_hist_id_select")
+            id_orcamento = st.selectbox(
+                "Selecione o ID do Orçamento",
+                options=user_history['ID'],
+                key="user_hist_id_select"
+            )
             if id_orcamento:
                 orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
                 st.write(f"**Detalhes Completos do Orçamento {id_orcamento}:**")
