@@ -435,8 +435,8 @@ def display_history_page():
                 proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
                 proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
 
-                # Botões de ação em linha (sempre visíveis)
-                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                # Botões de ação em linha (restaurados todos: Excluir, Editar, Aprovar, Suspender, Finalizar)
+                col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
                 with col_btn1:
                     if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
                         idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
@@ -460,6 +460,22 @@ def display_history_page():
                         storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
                         storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                         st.success(f"Orçamento {id_orcamento} aprovado!")
+                        st.rerun()
+                with col_btn4:
+                    if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Suspenso"
+                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                        st.success(f"Orçamento {id_orcamento} suspenso!")
+                        st.rerun()
+                with col_btn5:
+                    if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Finalizado"
+                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                        st.success(f"Orçamento {id_orcamento} finalizado!")
                         st.rerun()
 
                 # ...existing code for ajustes_json, ajustes_lista, etc...
@@ -745,6 +761,7 @@ def display_admin_panel():
                             except Exception:
                                 df_detalhes_admin[col] = df_detalhes_admin[col].astype(str)
                     st.dataframe(df_detalhes_admin)
+                    # CORREÇÃO: converte colunas object para número ou string
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
                     try:
                         ajustes_lista_admin = json.loads(ajustes_json_admin)
