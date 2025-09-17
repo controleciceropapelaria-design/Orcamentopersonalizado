@@ -437,32 +437,34 @@ def display_history_page():
 
                 # Gera arquivo temporário para Ordem de Protótipo
                 ordem_path = f"OrdemPrototipo_{orcamento_selecionado.get('Cliente','')}_{orcamento_selecionado.get('Produto','')}_{orcamento_selecionado.get('ID','')}.pdf"
-                generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                if os.path.exists(ordem_path):
-                    with open(ordem_path, "rb") as fpdf:
-                        st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
-                    # Salva PDF da Ordem de Protótipo no GitHub na pasta Prototipos
-                    import base64, requests
-                    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
-                    path = f"Prototipos/{os.path.basename(ordem_path)}"
-                    url = f"https://api.github.com/repos/{repo}/contents/{path}"
-                    headers = {"Authorization": f"token {st.secrets['github_token']}"}
-                    # Verifica se já existe para pegar o SHA
-                    get_resp = requests.get(url, headers=headers)
-                    sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
-                    b64_content = base64.b64encode(open(ordem_path, "rb").read()).decode()
-                    data = {
-                        "message": f"Upload ordem de protótipo {os.path.basename(ordem_path)} via Streamlit",
-                        "content": b64_content,
-                        "branch": "main"
-                    }
-                    if sha:
-                        data["sha"] = sha
-                    put_resp = requests.put(url, headers=headers, json=data)
-                    if put_resp.status_code in (200, 201):
-                        st.success("Ordem de Protótipo PDF salva no GitHub (Prototipos)!")
-                    else:
-                        st.warning("Não foi possível salvar a Ordem de Protótipo PDF no GitHub.")
+                # Novo: só gera e salva no GitHub se o usuário clicar no botão
+                if st.button("Gerar Ordem de Protótipo"):
+                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                    if os.path.exists(ordem_path):
+                        with open(ordem_path, "rb") as fpdf:
+                            st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
+                        # Salva PDF da Ordem de Protótipo no GitHub na pasta Prototipos
+                        import base64, requests
+                        repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+                        path = f"Prototipos/{os.path.basename(ordem_path)}"
+                        url = f"https://api.github.com/repos/{repo}/contents/{path}"
+                        headers = {"Authorization": f"token {st.secrets['github_token']}"}
+                        # Verifica se já existe para pegar o SHA
+                        get_resp = requests.get(url, headers=headers)
+                        sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
+                        b64_content = base64.b64encode(open(ordem_path, "rb").read()).decode()
+                        data = {
+                            "message": f"Upload ordem de protótipo {os.path.basename(ordem_path)} via Streamlit",
+                            "content": b64_content,
+                            "branch": "main"
+                        }
+                        if sha:
+                            data["sha"] = sha
+                        put_resp = requests.put(url, headers=headers, json=data)
+                        if put_resp.status_code in (200, 201):
+                            st.success("Ordem de Protótipo PDF salva no GitHub (Prototipos)!")
+                        else:
+                            st.warning("Não foi possível salvar a Ordem de Protótipo PDF no GitHub.")
                     ajustes_json = orcamento_selecionado.get('AjustesJSON', '[]')
                     ajustes_lista = json.loads(ajustes_json)
                     if ajustes_lista:
