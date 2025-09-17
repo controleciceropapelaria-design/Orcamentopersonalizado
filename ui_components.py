@@ -435,54 +435,34 @@ def display_history_page():
                 proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
                 proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
 
-                # Gera arquivo temporário para Ordem de Protótipo
-                ordem_path = f"OrdemPrototipo_{orcamento_selecionado.get('Cliente','')}_{orcamento_selecionado.get('Produto','')}_{orcamento_selecionado.get('ID','')}.pdf"
-                # Novo: só gera e salva no GitHub se o usuário clicar no botão
-                if st.button("Gerar Ordem de Protótipo"):
-                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                    if os.path.exists(ordem_path):
-                        with open(ordem_path, "rb") as fpdf:
-                            st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
-                        # Salva PDF da Ordem de Protótipo no GitHub na pasta Prototipos
-                        import base64, requests
-                        repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
-                        path = f"Prototipos/{os.path.basename(ordem_path)}"
-                        url = f"https://api.github.com/repos/{repo}/contents/{path}"
-                        headers = {"Authorization": f"token {st.secrets['github_token']}"}
-                        # Verifica se já existe para pegar o SHA
-                        get_resp = requests.get(url, headers=headers)
-                        sha = get_resp.json().get("sha") if get_resp.status_code == 200 else None
-                        b64_content = base64.b64encode(open(ordem_path, "rb").read()).decode()
-                        data = {
-                            "message": f"Upload ordem de protótipo {os.path.basename(ordem_path)} via Streamlit",
-                            "content": b64_content,
-                            "branch": "main"
-                        }
-                        if sha:
-                            data["sha"] = sha
-                        put_resp = requests.put(url, headers=headers, json=data)
-                        if put_resp.status_code in (200, 201):
-                            st.success("Ordem de Protótipo PDF salva no GitHub (Prototipos)!")
-                        else:
-                            st.warning("Não foi possível salvar a Ordem de Protótipo PDF no GitHub.")
-                    ajustes_json = orcamento_selecionado.get('AjustesJSON', '[]')
-                    ajustes_lista = json.loads(ajustes_json)
-                    if ajustes_lista:
-                        st.write("**Ajustes Manuais Aplicados:**")
-                        df_ajustes = pd.DataFrame(ajustes_lista)
-                        # CORREÇÃO: converte colunas object para número ou string
-                        for col in df_ajustes.columns:
-                            if df_ajustes[col].dtype == "object":
-                                try:
-                                    df_ajustes[col] = pd.to_numeric(df_ajustes[col], errors="raise")
-                                except Exception:
-                                    df_ajustes[col] = df_ajustes[col].astype(str)
-                        st.dataframe(df_ajustes, width='stretch')
-                # Adicione um bloco try antes do except para corrigir o erro de sintaxe
-                try:
-                    pass  # Coloque aqui o código que pode gerar json.JSONDecodeError ou TypeError
-                except (json.JSONDecodeError, TypeError):
-                    st.warning("Não foi possível ler os detalhes dos ajustes.")
+                # Botões de ação em linha (sempre visíveis)
+                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                with col_btn1:
+                    if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                        st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
+                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        storage.delete_orcamento_from_github(st.secrets["github_token"])
+                        st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
+                        st.rerun()
+                with col_btn2:
+                    if st.button("Editar Orçamento", key=f"editar_{id_orcamento}_details"):
+                        selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
+                        for key, value in selecoes.items():
+                            st.session_state[key] = value
+                        st.session_state['editing_id'] = id_orcamento
+                        st.session_state['page'] = "Orçamento"
+                        st.rerun()
+                with col_btn3:
+                    if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Aprovado"
+                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                        st.success(f"Orçamento {id_orcamento} aprovado!")
+                        st.rerun()
+
+                # ...existing code for ajustes_json, ajustes_lista, etc...
     else:
         st.info("Nenhum orçamento encontrado para o seu usuário.")
 
@@ -778,6 +758,23 @@ def display_admin_panel():
                                     except Exception:
                                         df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
                             st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                     except (json.JSONDecodeError, TypeError):
                         st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
