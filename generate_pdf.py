@@ -9,6 +9,10 @@ def get_multicell_height(pdf, w, h, text):
     tmp_pdf.multi_cell(w, h, text)
     return tmp_pdf.get_y()
 
+def format_brl(value):
+    """Formata um número float para o padrão brasileiro: 1.234,56"""
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 def generate_proposal_pdf(proposal_data, output_path):
     pdf = FPDF()
     pdf.add_page()
@@ -24,7 +28,12 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.set_text_color(0, 0, 0)
     pdf.set_xy(10, 45)
     pdf.ln(8)
+    # Adiciona número e versão do orçamento no topo direito
+    numero = proposal_data.get('numero_orcamento', '')
+    versao = proposal_data.get('versao_orcamento', 1)
     pdf.cell(0, 8, f"Rio de Janeiro, {proposal_data['data']}", ln=True, align="R")
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(0, 8, f"Nº Orçamento: {numero} | Versão: {versao}", ln=True, align="R")
 
     pdf.set_xy(10, 55)
     pdf.set_font("Times", "B", 12)
@@ -84,14 +93,14 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.set_xy(x + w_quantidade, y)
     pdf.multi_cell(w_descricao, cell_height, descricao_text, border=1, align="L")
 
-    # Unitário (negrito)
+    # Unitário (negrito) - formato brasileiro
     pdf.set_font("Times", "B", 8)
     pdf.set_xy(x + w_quantidade + w_descricao, y)
-    pdf.cell(w_unitario, altura_total, f"R$ {proposal_data['Unitario']:,.2f}", border=1, align="C")
+    pdf.cell(w_unitario, altura_total, format_brl(proposal_data['Unitario']), border=1, align="C")
 
-    # Total (negrito)
+    # Total (negrito) - formato brasileiro
     pdf.set_xy(x + w_quantidade + w_descricao + w_unitario, y)
-    pdf.cell(w_total, altura_total, f"R$ {proposal_data['total']:,.2f}", border=1, align="C")
+    pdf.cell(w_total, altura_total, format_brl(proposal_data['total']), border=1, align="C")
 
     pdf.set_y(y + altura_total)
     pdf.ln(5)
@@ -156,7 +165,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.cell(80, 6, "Cicero", ln=False, align="C")
     pdf.cell(0, 6, f"{proposal_data['cliente']}", ln=True, align="C")
     pdf.cell(80, 6, "", ln=False, align="C")
-    pdf.cell(0, 6, "de.....................de 2025.", ln=True, align="C")
+    pdf.cell(0, 6, "......de...............de 2025.", ln=True, align="C")
     pdf.ln(8)
 
     # Rodapé endereço

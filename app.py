@@ -18,6 +18,8 @@ import auth
 import data_services as ds
 import ui_components as ui
 import calculations as calc
+from generate_pdf import generate_proposal_pdf
+from generate_ordem_prototipo import generate_ordem_prototipo_pdf
 
 # ================== CONFIGURAÇÃO DA PÁGINA E ESTADO INICIAL ==================
 
@@ -576,6 +578,11 @@ def budget_page():
                 validade_orcamento = "10 dias"
                 prazo_entrega = "15 dias"
 
+                # Busca dados do cliente selecionado
+                cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == selected_client]
+                razao_social = cliente_row["Razao Social"].values[0] if not cliente_row.empty else selected_client
+                contato_cliente = cliente_row["Contato"].values[0] if not cliente_row.empty else ""
+
                 # Agrupamento e descrição dos componentes (igual ao seu código)
                 grupos = defaultdict(list)
                 for item in all_costs:
@@ -610,22 +617,49 @@ def budget_page():
 
                 descricao_produto = "\n\n".join(descricao_componentes)
 
+                # --- NOVO: Geração do número sequencial e versão ---
+                editing_id = st.session_state.get('editing_id')
+                if editing_id:
+                    orcamento_id = editing_id
+                    # Busca versão
+                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == editing_id].index[0]
+                    versoes_json = st.session_state.df_orcamentos.loc[idx].get("VersoesJSON", "[]")
+                    try:
+                        versoes = json.loads(versoes_json)
+                        versao_num = len(versoes) + 1
+                    except Exception:
+                        versao_num = 1
+                else:
+                    def get_next_orcamento_number():
+                        """Gera o próximo número sequencial de orçamento com base no DataFrame atual."""
+                        df = st.session_state.df_orcamentos
+                        if "ID" in df.columns and not df.empty:
+                            # IDs no formato ORC123, extrai o número
+                            numeros = df["ID"].str.extract(r'ORC(\d+)')[0].dropna().astype(int)
+                            if not numeros.empty:
+                                return numeros.max() + 1
+                        return 1
+                    orcamento_num = get_next_orcamento_number()
+                    orcamento_id = f"ORC{orcamento_num}"
+                    versao_num = 1
+
                 proposal_data = {
                     "data": datetime.now().strftime("%d/%m/%Y"),
-                    "cliente": selected_client,
-                    "responsavel": st.session_state.full_name,
-                    "numero_orcamento": f"ORC{int(datetime.now().timestamp())}",
+                    "cliente": razao_social,
+                    "responsavel": contato_cliente,
+                    "numero_orcamento": orcamento_id,
+                    "versao_orcamento": versao_num,
                     "produto": selected_product,
                     "quantidade": budget_quantity,
                     "descrição": descricao_produto,
                     "Unitario": round(preco_venda, 2),
                     "total": round(preco_venda * budget_quantity, 2),
-                    "atendente": st.session_state.username,
+                    "atendente": st.session_state.full_name,
                     "validade": validade_orcamento,
                     "prazo_de_entrega": prazo_entrega,
                 }
 
-                 # Define o diretório de propostas
+                # Define o diretório de propostas
                 propostas_dir = "Propostas"
                 if not os.path.exists(propostas_dir):
                     os.makedirs(propostas_dir, exist_ok=True)
@@ -658,6 +692,16 @@ def budget_page():
                         st.success("Proposta PDF salva no GitHub!")
                     else:
                         st.warning("Não foi possível salvar a proposta PDF no GitHub.")
+
+                # --- GERAÇÃO DA ORDEM DE PROTÓTIPO ---
+                ordem_path = os.path.join(
+                    propostas_dir,
+                    f"OrdemPrototipo_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                )
+                generate_ordem_prototipo_pdf(proposal_data, ordem_path)
+                if os.path.exists(ordem_path):
+                    with open(ordem_path, "rb") as fpdf:
+                        st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
 
                 # --- Lógica de edição ou novo orçamento ---
                 editing_id = st.session_state.get('editing_id')
@@ -708,7 +752,7 @@ def budget_page():
                 else:
                     # Cria novo orçamento
                     new_budget = {
-                        "ID": f"ORC{int(datetime.now().timestamp())}",
+                        "ID": orcamento_id,
                         "Usuario": st.session_state.username,
                         "NomeOrcamentista": st.session_state.full_name,
                         "Cliente": selected_client,
