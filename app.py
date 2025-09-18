@@ -75,8 +75,9 @@ def budget_page():
         if not row.empty:
             row = row.iloc[0]
             st.write("[DEBUG] Dados do orçamento carregado:", row)
+            st.write("[DEBUG] SelecoesJSON bruto:", row.get("SelecoesJSON", ""))
             selecoes = json.loads(row.get("SelecoesJSON", "{}"))
-            st.write("[DEBUG] SelecoesJSON:", selecoes)
+            st.write("[DEBUG] SelecoesJSON (dict):", selecoes)
             for key, value in selecoes.items():
                 st.session_state[key] = value
             # Preenche campos principais do formulário
