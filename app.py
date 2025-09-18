@@ -49,6 +49,8 @@ def initialize_session_state():
 
 # ================== LÓGICA DE ORÇAMENTO ==================
 def budget_page():
+    # DEBUG: Exibe todo o session_state para depuração
+    st.write("[DEBUG] session_state:", st.session_state)
     """Renderiza a página principal de criação de orçamento."""
     st.title("📐 Criação de Orçamento")
 
