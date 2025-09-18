@@ -49,8 +49,6 @@ def initialize_session_state():
 
 # ================== LÓGICA DE ORÇAMENTO ==================
 def budget_page():
-    # DEBUG: Exibe todo o session_state para depuração
-    st.write("[DEBUG] session_state:", st.session_state)
     """Renderiza a página principal de criação de orçamento."""
     st.title("📐 Criação de Orçamento")
 
@@ -67,17 +65,11 @@ def budget_page():
 
     # Carrega os dados do orçamento para edição, se houver
     if editing_id and not st.session_state.get('edit_loaded'):
-        st.info(f"[DEBUG] editing_id: {editing_id}")
         df = st.session_state.df_orcamentos
-        st.write("[DEBUG] df_orcamentos IDs:", df['ID'].tolist())
         row = df[df['ID'] == editing_id]
-        st.write("[DEBUG] row encontrado:", row)
         if not row.empty:
             row = row.iloc[0]
-            st.write("[DEBUG] Dados do orçamento carregado:", row)
-            st.write("[DEBUG] SelecoesJSON bruto:", row.get("SelecoesJSON", ""))
             selecoes = json.loads(row.get("SelecoesJSON", "{}"))
-            st.write("[DEBUG] SelecoesJSON (dict):", selecoes)
             for key, value in selecoes.items():
                 st.session_state[key] = value
             # Preenche campos principais do formulário
@@ -99,7 +91,7 @@ def budget_page():
             st.session_state['selected_silk'] = busca_acabamento('selected_silk', ["Nenhum", "1/0","2/0","3/0","4/0"])
             st.session_state['edit_loaded'] = True
         else:
-            st.warning(f"[DEBUG] Nenhum orçamento encontrado com ID {editing_id} em df_orcamentos.")
+            pass
 
     # --- Carregar todos os dados externos ---
     try:
