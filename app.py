@@ -519,12 +519,15 @@ def budget_page():
             if "Quantidade" in cost_df.columns:
                 # NOVO: mostra casas decimais para Couro Sintético, inteiro para os demais
                 def round_quantidade(row):
-                    if "Capa - Papel/Material" in row["name"] and cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")):
-                        return round(row["Quantidade"], 2)
-                    # Alternativamente, verifica se é Couro Sintético pelo details
-                    if cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")) and row["name"].startswith("Capa"):
-                        return round(row["Quantidade"], 2)
-                    return round(row["Quantidade"], 0)
+                    try:
+                        q = float(row["Quantidade"])
+                        if "Capa - Papel/Material" in row["name"] and cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")):
+                            return round(q, 2)
+                        if cover_cost_result and "COURO SINTÉTICO" in str(cover_cost_result.get("details", "")) and row["name"].startswith("Capa"):
+                            return round(q, 2)
+                        return round(q, 0)
+                    except (ValueError, TypeError):
+                        return row["Quantidade"]
                 cost_df["Quantidade"] = cost_df.apply(round_quantidade, axis=1)
             cost_df = cost_df.copy()
             for col in cost_df.columns:
