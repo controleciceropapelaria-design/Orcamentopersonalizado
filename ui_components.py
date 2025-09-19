@@ -484,6 +484,59 @@ def display_history_page():
                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                     st.success(f"Orçamento {id_orcamento} finalizado!")
                     st.rerun()
+
+            with col_btn6:
+                # Botão branco para gerar ordem de protótipo
+                custom_btn_style = """
+                <style>
+                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento} {
+                    background-color: #fff !important;
+                    color: #222 !important;
+                    border: 1px solid #ccc !important;
+                }
+                </style>
+                """
+                st.markdown(custom_btn_style.replace("{id_orcamento}", str(id_orcamento)), unsafe_allow_html=True)
+                if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
+                    from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                    import os
+                    from datetime import datetime
+                    proposta_data = {
+                        "data": datetime.now().strftime("%d/%m/%Y"),
+                        "cliente": orcamento_selecionado.get("Cliente", ""),
+                        "responsavel": "",
+                        "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                        "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                        "produto": orcamento_selecionado.get("Produto", ""),
+                        "quantidade": 2,
+                        "descrição": orcamento_selecionado.get("descrição", ""),
+                        "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                        "total": "",
+                        "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                        "validade": "",
+                        "prazo_de_entrega": "",
+                    }
+                    # Busca contato do cliente se possível
+                    try:
+                        cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
+                        if not cliente_row.empty:
+                            proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                    except Exception:
+                        pass
+                    # Gera o PDF e oferece download
+                    propostas_dir = "Propostas"
+                    if not os.path.exists(propostas_dir):
+                        os.makedirs(propostas_dir, exist_ok=True)
+                    ordem_path = os.path.join(
+                        propostas_dir,
+                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    )
+                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                    if os.path.exists(ordem_path):
+                        with open(ordem_path, "rb") as fpdf:
+                            st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path), key=f"download_ordem_{id_orcamento}")
+
+                # ...existing code for ajustes_json, ajustes_lista, etc...
     else:
         st.info("Nenhum orçamento encontrado para o seu usuário.")
 

@@ -28,12 +28,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.set_text_color(0, 0, 0)
     pdf.set_xy(10, 45)
     pdf.ln(8)
-    # Adiciona número e versão do orçamento no topo direito
-    numero = proposal_data.get('numero_orcamento', '')
-    versao = proposal_data.get('versao_orcamento', 1)
     pdf.cell(0, 8, f"Rio de Janeiro, {proposal_data['data']}", ln=True, align="R")
-    pdf.set_font("Times", "B", 10)
-    pdf.cell(0, 8, f"Nº Orçamento: {numero} | Versão: {versao}", ln=True, align="R")
 
     pdf.set_xy(10, 55)
     pdf.set_font("Times", "B", 12)
