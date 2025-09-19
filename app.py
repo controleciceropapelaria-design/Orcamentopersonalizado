@@ -705,10 +705,11 @@ def budget_page():
                     propostas_dir,
                     f"OrdemPrototipo_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 )
-                generate_ordem_prototipo_pdf(proposal_data, ordem_path)
-                if os.path.exists(ordem_path):
-                    with open(ordem_path, "rb") as fpdf:
-                        st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
+                # Removido: geração automática e botão de download da ordem de protótipo aqui
+                # generate_ordem_prototipo_pdf(proposal_data, ordem_path)
+                # if os.path.exists(ordem_path):
+                #     with open(ordem_path, "rb") as fpdf:
+                #         st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
 
                 # --- Lógica de edição ou novo orçamento ---
                 editing_id = st.session_state.get('editing_id')
