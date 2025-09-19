@@ -69,13 +69,30 @@ def budget_page():
         row = df[df['ID'] == editing_id]
         if not row.empty:
             row = row.iloc[0]
-            selecoes = json.loads(row.get("SelecoesJSON", "{}"))
+            # Use sempre os dados da última versão salva, se houver
+            versoes_json = row.get("VersoesJSON", "[]")
+            try:
+                versoes = json.loads(versoes_json)
+                if versoes and isinstance(versoes, list):
+                    # Pega a última versão salva (a mais recente)
+                    last_version = versoes[-1]["data"] if "data" in versoes[-1] else None
+                else:
+                    last_version = None
+            except Exception:
+                last_version = None
+
+            # Se houver uma versão, use ela, senão use o row atual
+            dados_orcamento = last_version if last_version else row.to_dict()
+            selecoes = json.loads(dados_orcamento.get("SelecoesJSON", "{}"))
             for key, value in selecoes.items():
                 st.session_state[key] = value
             # Preenche campos principais do formulário
-            st.session_state['selected_client'] = row['Cliente']
-            st.session_state['budget_quantity'] = int(row['Quantidade']) if str(row['Quantidade']).isdigit() else 15000
-            st.session_state['sel_produto'] = row['Produto']
+            st.session_state['selected_client'] = dados_orcamento.get('Cliente', row.get('Cliente', ''))
+            try:
+                st.session_state['budget_quantity'] = int(dados_orcamento.get('Quantidade', 15000))
+            except Exception:
+                st.session_state['budget_quantity'] = 15000
+            st.session_state['sel_produto'] = dados_orcamento.get('Produto', row.get('Produto', ''))
             # Preenche campos de acabamento
             def busca_acabamento(tipo, opcoes):
                 # Prioriza valor salvo explicitamente
