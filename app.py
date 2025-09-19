@@ -83,7 +83,17 @@ def budget_page():
 
             # Se houver uma versão, use ela, senão use o row atual
             dados_orcamento = last_version if last_version else row.to_dict()
-            selecoes = json.loads(dados_orcamento.get("SelecoesJSON", "{}"))
+            # --- CORREÇÃO: Carregar todos os campos de componentes do orçamento salvo ---
+            selecoes = {}
+            try:
+                selecoes = json.loads(dados_orcamento.get("SelecoesJSON", "{}"))
+            except Exception:
+                selecoes = {}
+            # Limpa todos os campos de seleção de componentes antes de preencher
+            for key in list(st.session_state.keys()):
+                if key.startswith(('sel_', 'paper_', 'mat_cost_', 'serv_cost_', 'util_', 'rings_', 'vu_', 'cd_')):
+                    del st.session_state[key]
+            # Preenche todos os campos de componentes salvos
             for key, value in selecoes.items():
                 st.session_state[key] = value
             # Preenche campos principais do formulário
@@ -93,19 +103,14 @@ def budget_page():
             except Exception:
                 st.session_state['budget_quantity'] = 15000
             st.session_state['sel_produto'] = dados_orcamento.get('Produto', row.get('Produto', ''))
-            # Preenche campos de acabamento
-            def busca_acabamento(tipo, opcoes):
-                # Prioriza valor salvo explicitamente
-                if tipo in selecoes:
-                    return selecoes[tipo]
-                # Busca valor que bate com as opções
-                for v in selecoes.values():
-                    if v in opcoes:
-                        return v
-                return opcoes[0]
-            st.session_state['selected_laminacao'] = busca_acabamento('selected_laminacao', ["Nenhum", "Laminação Fosca"])
-            st.session_state['selected_hot_stamping'] = busca_acabamento('selected_hot_stamping', ["Nenhum", "Interno (sem custo adicional)", "Externo Pequeno", "Externo Grande"])
-            st.session_state['selected_silk'] = busca_acabamento('selected_silk', ["Nenhum", "1/0","2/0","3/0","4/0"])
+            # Preenche campos de acabamento explicitamente se existirem
+            for extra_key in [
+                'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
+                'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
+            ]:
+                if extra_key in selecoes:
+                    st.session_state[extra_key] = selecoes[extra_key]
+            st.session_state['ajustes'] = json.loads(dados_orcamento.get('AjustesJSON', '[]'))
             st.session_state['edit_loaded'] = True
 
     # --- Carregar todos os dados externos ---
