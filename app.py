@@ -495,6 +495,11 @@ def budget_page():
                     or "GUARDA FRENTE" in item["name"]
                     or "GUARDA VERSO" in item["name"]
                     or "Forro" in item["name"]
+                    or "MIOLO" in item["name"]
+                    or "BOLSA" in item["name"]
+                    or "Divisoria" in item["name"]
+                    or "ADESIVO" in item["name"]
+                    or "FORRO" in item["name"] 
                 ):
                     comp_row = None
                     if "Miolo" in item["name"]:
@@ -521,6 +526,30 @@ def budget_page():
                         df_comp = df_guarda_verso
                         comp_col = "GuardaVerso"
                         comp_nome = "Guarda"
+                    elif "FORRO" in item["name"]:
+                        df_comp = df_guarda_forro
+                        comp_col = "Item"
+                        comp_nome = "Forro"
+                    elif "MIOLO" in item["name"]:
+                        df_comp = df_miolos
+                        comp_col = "Miolo"
+                        comp_nome = "Miolo"
+                    elif "BOLSA" in item["name"]:
+                        df_comp = df_bolsas
+                        comp_col = "Bolsa"
+                        comp_nome = "Bolsa"
+                    elif "Divisoria" in item["name"]:            
+                        df_comp = df_divisorias
+                        comp_col = "Divisoria"
+                        comp_nome = "Divisoria"
+                    elif "ADESIVO" in item["name"]:
+                        df_comp = df_adesivos
+                        comp_col = "Adesivo"
+                        comp_nome = "Adesivo"    
+                    elif "FORRO" in item["name"]:
+                        df_comp = df_guarda_forro
+                        comp_col = "Item"
+                        comp_nome = "Forro"
                     else:
                         df_comp = None
                         comp_col = None
