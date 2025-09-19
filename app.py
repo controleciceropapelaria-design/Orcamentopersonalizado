@@ -89,13 +89,21 @@ def budget_page():
                 selecoes = json.loads(dados_orcamento.get("SelecoesJSON", "{}"))
             except Exception:
                 selecoes = {}
+
             # Limpa todos os campos de seleção de componentes antes de preencher
             for key in list(st.session_state.keys()):
                 if key.startswith(('sel_', 'paper_', 'mat_cost_', 'serv_cost_', 'util_', 'rings_', 'vu_', 'cd_')):
                     del st.session_state[key]
+
             # Preenche todos os campos de componentes salvos
             for key, value in selecoes.items():
                 st.session_state[key] = value
+
+            # Força o valor default dos selectbox para os componentes (corrige bug do Streamlit)
+            def force_selectbox_value(key, value):
+                # Streamlit só atualiza selectbox se o valor já existir nas opções
+                st.session_state[key] = value
+
             # Preenche campos principais do formulário
             st.session_state['selected_client'] = dados_orcamento.get('Cliente', row.get('Cliente', ''))
             try:
@@ -103,13 +111,20 @@ def budget_page():
             except Exception:
                 st.session_state['budget_quantity'] = 15000
             st.session_state['sel_produto'] = dados_orcamento.get('Produto', row.get('Produto', ''))
+
             # Preenche campos de acabamento explicitamente se existirem
             for extra_key in [
                 'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
                 'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
             ]:
                 if extra_key in selecoes:
-                    st.session_state[extra_key] = selecoes[extra_key]
+                    force_selectbox_value(extra_key, selecoes[extra_key])
+
+            # Preenche campos de compras diretas (cd_) e personalizados (mat_cost_, serv_cost_, paper_)
+            for key in selecoes:
+                if key.startswith(('cd_', 'mat_cost_', 'serv_cost_', 'paper_', 'util_', 'rings_', 'vu_')):
+                    force_selectbox_value(key, selecoes[key])
+
             st.session_state['ajustes'] = json.loads(dados_orcamento.get('AjustesJSON', '[]'))
             st.session_state['edit_loaded'] = True
 
