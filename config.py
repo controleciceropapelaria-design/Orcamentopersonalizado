@@ -18,9 +18,12 @@ COLUNAS_CLIENTES = [
     "Nome", "Razao Social", "CNPJ", "Endereco", "CEP", "Cidade", "UF",
     "Inscricao Estadual", "Email", "Telefone", "Forma de Pagamento", "Contato", "Status"
 ]
-COLUNAS_ORCAMENTOS = ["ID", "Usuario", "NomeOrcamentista", "Cliente", "Produto", "Quantidade", 
-                      "CustoBase", "ComissaoPct", "Markup", "PrecoVenda",
-                      "AjustesJSON", "Data", "PropostaPDF"]
+COLUNAS_ORCAMENTOS = [
+    "ID", "Usuario", "NomeOrcamentista", "Cliente", "Produto", "Quantidade",
+    "CustoBase", "ComissaoPct", "Markup", "PrecoVenda",
+    "AjustesJSON", "Data", "PropostaPDF",
+    "SelecoesJSON", "VersoesJSON", "VersoesOrcamento", "StatusOrcamento"
+]
 COLUNAS_TEMPLATES = ["NomeTemplate", "SelecoesJSON"]
 
 # ================== URLs DOS DADOS EXTERNOS (VERSÃO CORRIGIDA E SIMPLIFICADA) ==================
