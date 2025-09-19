@@ -427,7 +427,7 @@ def display_history_page():
             proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
 
 
-            col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
+            col_btn1, col_btn2, col_btn3, col_btn4, col_btn5, col_btn6 = st.columns(6)
             with col_btn1:
                 if show_editar and st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
                     versao_data = versoes[versao_idx]["data"]
