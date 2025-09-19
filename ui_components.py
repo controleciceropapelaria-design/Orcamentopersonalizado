@@ -356,6 +356,13 @@ def display_history_page():
                 "mat_cost_miolo": "Material",
                 "serv_cost_miolo": "Serviço"
             })
+
+            # Regras de botões por status
+            show_editar = status in ["Pendente", "Suspenso"]
+            show_excluir = status in ["Pendente", "Suspenso"]
+            show_aprovar = status == "Pendente"
+            show_suspender = status == "Aprovado"
+            show_finalizar = status == "Aprovado"
             # Guarda (Frente)
             add_comp("Guarda (Frente) ou Forro", [
                 "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
