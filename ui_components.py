@@ -269,185 +269,175 @@ def display_history_page():
                     except Exception:
                         df_detalhes[col] = df_detalhes[col].astype(str)
             st.dataframe(df_detalhes)
+            
+            # Mostra status colorido no topo do expander
+            status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
+            if pd.isna(status):
+                status = "Pendente"
+            status = str(status).strip().capitalize()
+            status_colors = {
+                "Pendente": "#ff9800",
+                "Aprovado": "#2ecc40",
+                "Suspenso": "#ffeb3b",
+                "Finalizado": "#e74c3c"
+            }
+            st.markdown(
+                f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
+                unsafe_allow_html=True
+            )
+
             # Botão para baixar o PDF da proposta, se existir
             pdf_path = orcamento_selecionado.get("PropostaPDF", "")
             if pdf_path and os.path.exists(pdf_path):
                 with open(pdf_path, "rb") as fpdf:
                     st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento}")
 
-            # Determina status e quais botões mostrar
-            status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
-            if pd.isna(status):
-                status = "Pendente"
-            status = str(status).strip().capitalize()
-
-            # Botões customizados por status
+            # Regras de exibição dos botões
             # Pendente: Baixar, Editar, Excluir, Aprovar
             # Aprovado: Baixar, Editar, Suspender, Finalizar, Gerar Ordem
             # Suspenso: Baixar, Editar, Excluir, Aprovar, Finalizar, Gerar Ordem
             # Finalizado: Baixar, Editar, Gerar Ordem
 
-            # Define botões a exibir
-            show_btn = {
-                "baixar": True,
-                "editar": True,
-                "excluir": status in ["Pendente", "Suspenso"],
-                "aprovar": status in ["Pendente", "Suspenso"],
-                "suspender": status == "Aprovado",
-                "finalizar": status in ["Aprovado", "Suspenso"],
-                "ordem": status in ["Aprovado", "Suspenso", "Finalizado"]
-            }
+            btns = []
+            if status == "Pendente":
+                btns = ["editar", "excluir", "aprovar"]
+            elif status == "Aprovado":
+                btns = ["editar", "suspender", "finalizar", "ordem"]
+            elif status == "Suspenso":
+                btns = ["editar", "excluir", "aprovar", "finalizar", "ordem"]
+            elif status == "Finalizado":
+                btns = ["editar", "ordem"]
+
+            cols = st.columns(len(btns)) if btns else []
 
             # Estilos customizados para botões
             st.markdown("""
             <style>
-            .stButton>button.aprovar-btn {background-color: #2ecc40 !important; color: white !important;}
-            .stButton>button.suspender-btn {background-color: #ffeb3b !important; color: #222 !important;}
-            .stButton>button.finalizar-btn {background-color: #e74c3c !important; color: white !important;}
-            .stButton>button.ordem-btn {background-color: #fff !important; color: #222 !important; border: 1px solid #ccc !important;}
+            .btn-aprovar {background-color: #2ecc40 !important; color: #fff !important;}
+            .btn-suspender {background-color: #ffeb3b !important; color: #222 !important;}
+            .btn-finalizar {background-color: #e74c3c !important; color: #fff !important;}
+            .btn-ordem {background-color: #fff !important; color: #222 !important; border: 1px solid #ccc !important;}
+            .btn-excluir {background-color: #f44336 !important; color: #fff !important;}
+            .btn-editar {background-color: #1976d2 !important; color: #fff !important;}
             </style>
             """, unsafe_allow_html=True)
 
-            # Organiza colunas conforme botões visíveis
-            btns = []
-            if show_btn["editar"]: btns.append("editar")
-            if show_btn["excluir"]: btns.append("excluir")
-            if show_btn["aprovar"]: btns.append("aprovar")
-            if show_btn["suspender"]: btns.append("suspender")
-            if show_btn["finalizar"]: btns.append("finalizar")
-            if show_btn["ordem"]: btns.append("ordem")
-            cols = st.columns(len(btns)) if btns else []
-
-            col_idx = 0
-            # Editar esta versão
-            if show_btn["editar"]:
-                with cols[col_idx]:
-                    if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
-                        selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
-                        for key, value in selecoes.items():
-                            st.session_state[key] = value
-                        st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
-                        try:
-                            st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
-                        except Exception:
-                            st.session_state['budget_quantity'] = 15000
-                        st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
-                        for extra_key in [
-                            'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                            'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                        ]:
-                            if extra_key in selecoes:
-                                st.session_state[extra_key] = selecoes[extra_key]
-                        st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
-                        st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
-                        st.session_state['edit_loaded'] = True
-                        st.session_state['page'] = "Orçamento"
-                        st.success(f"Versão {versao_idx+1} carregada para edição!")
-                        st.rerun()
-                col_idx += 1
-            # Excluir Orçamento
-            if show_btn["excluir"]:
-                with cols[col_idx]:
-                    if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
-                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                        st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        storage.delete_orcamento_from_github(st.secrets["github_token"])
-                        st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
-                        st.rerun()
-                col_idx += 1
-            # Aprovar Orçamento (verde)
-            if show_btn["aprovar"]:
-                with cols[col_idx]:
-                    if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details", help="Aprovar orçamento", type="secondary"):
-                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Aprovado"
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                        st.success(f"Orçamento {id_orcamento} aprovado!")
-                        st.rerun()
-                    st.markdown('<style>div[data-testid="stButton"] button[kind="secondary"] {background-color: #2ecc40 !important; color: white !important;}</style>', unsafe_allow_html=True)
-                col_idx += 1
-            # Suspender Orçamento (amarelo)
-            if show_btn["suspender"]:
-                with cols[col_idx]:
-                    if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details", help="Suspender orçamento", type="secondary"):
-                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Suspenso"
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                        st.success(f"Orçamento {id_orcamento} suspenso!")
-                        st.rerun()
-                    st.markdown('<style>div[data-testid="stButton"] button[kind="secondary"] {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
-                col_idx += 1
-            # Finalizar Orçamento (vermelho)
-            if show_btn["finalizar"]:
-                with cols[col_idx]:
-                    if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details", help="Finalizar orçamento", type="secondary"):
-                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                        st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Finalizado"
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                        st.success(f"Orçamento {id_orcamento} finalizado!")
-                        st.rerun()
-                    st.markdown('<style>div[data-testid="stButton"] button[kind="secondary"] {background-color: #e74c3c !important; color: white !important;}</style>', unsafe_allow_html=True)
-                col_idx += 1
-            # Gerar Ordem de Protótipo (branco)
-            if show_btn["ordem"]:
-                with cols[col_idx]:
-                    custom_btn_style = f"""
-                    <style>
-                    div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento} {{
-                        background-color: #fff !important;
-                        color: #222 !important;
-                        border: 1px solid #ccc !important;
-                    }}
-                    </style>
-                    """
-                    st.markdown(custom_btn_style, unsafe_allow_html=True)
-                    if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
-                        from generate_ordem_prototipo import generate_ordem_prototipo_pdf
-                        import os
-                        from datetime import datetime
-                        proposta_data = {
-                            "data": datetime.now().strftime("%d/%m/%Y"),
-                            "cliente": orcamento_selecionado.get("Cliente", ""),
-                            "responsavel": "",
-                            "numero_orcamento": orcamento_selecionado.get("ID", ""),
-                            "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
-                            "produto": orcamento_selecionado.get("Produto", ""),
-                            "quantidade": 2,
-                            "descrição": orcamento_selecionado.get("descrição", ""),
-                            "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
-                            "total": "",
-                            "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
-                            "validade": "",
-                            "prazo_de_entrega": "",
-                        }
-                        try:
-                            cliente_row = st.session_state.df_clientes[
-                                st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
-                            ]
-                            if not cliente_row.empty:
-                                proposta_data["responsavel"] = cliente_row["Contato"].values[0]
-                        except Exception:
-                            pass
-                        propostas_dir = "Propostas"
-                        if not os.path.exists(propostas_dir):
-                            os.makedirs(propostas_dir, exist_ok=True)
-                        ordem_path = os.path.join(
-                            propostas_dir,
-                            f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                        )
-                        generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                        if os.path.exists(ordem_path):
-                            with open(ordem_path, "rb") as fpdf:
-                                st.download_button(
-                                    "Baixar Ordem de Protótipo PDF",
-                                    fpdf,
-                                    file_name=os.path.basename(ordem_path),
-                                    key=f"download_ordem_{id_orcamento}"
-                                )
+            for idx, btn in enumerate(btns):
+                with cols[idx]:
+                    if btn == "editar":
+                        if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
+                            selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
+                            for key, value in selecoes.items():
+                                st.session_state[key] = value
+                            st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
+                            try:
+                                st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+                            except Exception:
+                                st.session_state['budget_quantity'] = 15000
+                            st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
+                            for extra_key in [
+                                'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
+                                'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
+                            ]:
+                                if extra_key in selecoes:
+                                    st.session_state[extra_key] = selecoes[extra_key]
+                            st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
+                            st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
+                            st.session_state['edit_loaded'] = True
+                            st.session_state['page'] = "Orçamento"
+                            st.success(f"Versão {versao_idx+1} carregada para edição!")
+                            st.rerun()
+                        st.markdown('<style>div[data-testid="stButton"] button {background-color: #1976d2 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                    elif btn == "excluir":
+                        if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                            idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                            st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
+                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                            storage.delete_orcamento_from_github(st.secrets["github_token"])
+                            st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
+                            st.rerun()
+                        st.markdown('<style>div[data-testid="stButton"] button {background-color: #f44336 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                    elif btn == "aprovar":
+                        if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
+                            idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                            st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
+                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                            storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                            st.success(f"Orçamento {id_orcamento} aprovado!")
+                            st.rerun()
+                        st.markdown('<style>div[data-testid="stButton"] button {background-color: #2ecc40 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                    elif btn == "suspender":
+                        if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
+                            idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                            st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
+                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                            storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                            st.success(f"Orçamento {id_orcamento} suspenso!")
+                            st.rerun()
+                        st.markdown('<style>div[data-testid="stButton"] button {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
+                    elif btn == "finalizar":
+                        if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
+                            idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                            st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
+                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                            storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                            st.success(f"Orçamento {id_orcamento} finalizado!")
+                            st.rerun()
+                        st.markdown('<style>div[data-testid="stButton"] button {background-color: #e74c3c !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                    elif btn == "ordem":
+                        custom_btn_style = f"""
+                        <style>
+                        div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento} {{
+                            background-color: #fff !important;
+                            color: #222 !important;
+                            border: 1px solid #ccc !important;
+                        }}
+                        </style>
+                        """
+                        st.markdown(custom_btn_style, unsafe_allow_html=True)
+                        if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
+                            from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                            import os
+                            from datetime import datetime
+                            proposta_data = {
+                                "data": datetime.now().strftime("%d/%m/%Y"),
+                                "cliente": orcamento_selecionado.get("Cliente", ""),
+                                "responsavel": "",
+                                "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                                "produto": orcamento_selecionado.get("Produto", ""),
+                                "quantidade": 2,
+                                "descrição": orcamento_selecionado.get("descrição", ""),
+                                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                                "total": "",
+                                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                                "validade": "",
+                                "prazo_de_entrega": "",
+                            }
+                            try:
+                                cliente_row = st.session_state.df_clientes[
+                                    st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
+                                ]
+                                if not cliente_row.empty:
+                                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                            except Exception:
+                                pass
+                            propostas_dir = "Propostas"
+                            if not os.path.exists(propostas_dir):
+                                os.makedirs(propostas_dir, exist_ok=True)
+                            ordem_path = os.path.join(
+                                propostas_dir,
+                                f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                            )
+                            generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                            if os.path.exists(ordem_path):
+                                with open(ordem_path, "rb") as fpdf:
+                                    st.download_button(
+                                        "Baixar Ordem de Protótipo PDF",
+                                        fpdf,
+                                        file_name=os.path.basename(ordem_path),
+                                        key=f"download_ordem_{id_orcamento}"
+                                    )
                 col_idx += 1
             # ...existing code for ajustes_json, ajustes_lista, etc...
     else:
@@ -732,1440 +722,153 @@ def display_admin_panel():
                             except Exception:
                                 df_detalhes_admin[col] = df_detalhes_admin[col].astype(str)
                     st.dataframe(df_detalhes_admin)
-                    # CORREÇÃO: converte colunas object para número ou string
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    
+                    # Mostra status colorido no topo do expander
+                    status = orcamento_selecionado_admin.get('StatusOrcamento', 'Pendente')
+                    if pd.isna(status):
+                        status = "Pendente"
+                    status = str(status).strip().capitalize()
+                    status_colors = {
+                        "Pendente": "#ff9800",
+                        "Aprovado": "#2ecc40",
+                        "Suspenso": "#ffeb3b",
+                        "Finalizado": "#e74c3c"
+                    }
+                    st.markdown(
+                        f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
+                        unsafe_allow_html=True
+                    )
 
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
+                    # Botão para baixar o PDF da proposta, se existir
+                    pdf_path = orcamento_selecionado_admin.get("PropostaPDF", "")
+                    if pdf_path and os.path.exists(pdf_path):
+                        with open(pdf_path, "rb") as fpdf:
+                            st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
+
+                    # Regras de exibição dos botões
+                    # Pendente: Baixar, Editar, Excluir, Aprovar
+                    # Aprovado: Baixar, Editar, Suspender, Finalizar, Gerar Ordem
+                    # Suspenso: Baixar, Editar, Excluir, Aprovar, Finalizar, Gerar Ordem
+                    # Finalizado: Baixar, Editar, Gerar Ordem
+
+                    btns = []
+                    if status == "Pendente":
+                        btns = ["editar", "excluir", "aprovar"]
+                    elif status == "Aprovado":
+                        btns = ["editar", "suspender", "finalizar", "ordem"]
+                    elif status == "Suspenso":
+                        btns = ["editar", "excluir", "aprovar", "finalizar", "ordem"]
+                    elif status == "Finalizado":
+                        btns = ["editar", "ordem"]
+
+                    cols = st.columns(len(btns)) if btns else []
+
+                    # Estilos customizados para botões
+                    st.markdown("""
+                    <style>
+                    .btn-aprovar {background-color: #2ecc40 !important; color: #fff !important;}
+                    .btn-suspender {background-color: #ffeb3b !important; color: #222 !important;}
+                    .btn-finalizar {background-color: #e74c3c !important; color: #fff !important;}
+                    .btn-ordem {background-color: #fff !important; color: #222 !important; border: 1px solid #ccc !important;}
+                    .btn-excluir {background-color: #f44336 !important; color: #fff !important;}
+                    .btn-editar {background-color: #1976d2 !important; color: #fff !important;}
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    for idx, btn in enumerate(btns):
+                        with cols[idx]:
+                            if btn == "editar":
+                                if st.button("Editar esta versão", key=f"editar_{id_orcamento_admin}_details"):
+                                    # ...existing code for editar...
+                                    st.rerun()
+                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #1976d2 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                            elif btn == "excluir":
+                                if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento_admin}_details"):
+                                    idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
+                                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
+                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                                    storage.delete_orcamento_from_github(st.secrets["github_token"])
+                                    st.success(f"Orçamento {id_orcamento_admin} excluído com sucesso!")
+                                    st.rerun()
+                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #f44336 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                            elif btn == "aprovar":
+                                if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento_admin}_details"):
+                                    idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
+                                    st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
+                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                                    st.success(f"Orçamento {id_orcamento_admin} aprovado!")
+                                    st.rerun()
+                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #2ecc40 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                            elif btn == "suspender":
+                                if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento_admin}_details"):
+                                    idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
+                                    st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
+                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                                    st.success(f"Orçamento {id_orcamento_admin} suspenso!")
+                                    st.rerun()
+                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
+                            elif btn == "finalizar":
+                                if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento_admin}_details"):
+                                    idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
+                                    st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
+                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                                    st.success(f"Orçamento {id_orcamento_admin} finalizado!")
+                                    st.rerun()
+                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #e74c3c !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                            elif btn == "ordem":
+                                custom_btn_style = f"""
+                                <style>
+                                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento_admin} {{
+                                    background-color: #fff !important;
+                                    color: #222 !important;
+                                    border: 1px solid #ccc !important;
+                                }}
+                                </style>
+                                """
+                                st.markdown(custom_btn_style, unsafe_allow_html=True)
+                                if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento_admin}"):
+                                    from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                                    import os
+                                    from datetime import datetime
+                                    proposta_data = {
+                                        "data": datetime.now().strftime("%d/%m/%Y"),
+                                        "cliente": orcamento_selecionado_admin.get("Cliente", ""),
+                                        "responsavel": "",
+                                        "numero_orcamento": orcamento_selecionado_admin.get("ID", ""),
+                                        "versao_orcamento": orcamento_selecionado_admin.get("VersoesOrcamento", 1),
+                                        "produto": orcamento_selecionado_admin.get("Produto", ""),
+                                        "quantidade": 2,
+                                        "descrição": orcamento_selecionado_admin.get("descrição", ""),
+                                        "Unitario": orcamento_selecionado_admin.get("PrecoVenda", ""),
+                                        "total": "",
+                                        "atendente": orcamento_selecionado_admin.get("NomeOrcamentista", ""),
+                                        "validade": "",
+                                        "prazo_de_entrega": "",
+                                    }
                                     try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                        cliente_row = st.session_state.df_clientes[
+                                            st.session_state.df_clientes["Nome"] == orcamento_selecionado_admin.get("Cliente", "")
+                                        ]
+                                        if not cliente_row.empty:
+                                            proposta_data["responsavel"] = cliente_row["Contato"].values[0]
                                     except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
-                    try:
-                        ajustes_lista_admin = json.loads(ajustes_json_admin)
-                        if ajustes_lista_admin:
-                            st.write("**Ajustes Manuais Aplicados:**")
-                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
-                            for col in df_ajustes_admin.columns:
-                                if df_ajustes_admin[col].dtype == "object":
-                                    try:
-                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
-                                    except Exception:
-                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
-                            st.dataframe(df_ajustes_admin, width='stretch')
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
-                    except (json.JSONDecodeError, TypeError):
-                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                                        pass
+                                    propostas_dir = "Propostas"
+                                    if not os.path.exists(propostas_dir):
+                                        os.makedirs(propostas_dir, exist_ok=True)
+                                    ordem_path = os.path.join(
+                                        propostas_dir,
+                                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                    )
+                                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                                    if os.path.exists(ordem_path):
+                                        with open(ordem_path, "rb") as fpdf:
+                                            st.download_button(
+                                                "Baixar Ordem de Protótipo PDF",
+                                                fpdf,
+                                                file_name=os.path.basename(ordem_path),
+                                                key=f"download_ordem_{id_orcamento_admin}"
+                                            )
