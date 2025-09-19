@@ -246,14 +246,6 @@ def display_history_page():
             options=list(range(len(versoes))),
             format_func=lambda i: versao_labels[i]
         )
-        col_download = st.columns(1)[0]
-        if col_download.button("Baixar Proposta PDF desta versão"):
-            pdf_path = versoes[versao_idx]["data"].get("PropostaPDF", "")
-            if pdf_path and os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as fpdf:
-                    st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
-            else:
-                st.warning("Arquivo PDF não encontrado para esta versão.")
 
         # Expander de detalhes e botões de ação por orçamento
         with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
@@ -290,35 +282,143 @@ def display_history_page():
                 with open(pdf_path, "rb") as fpdf:
                     st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
 
-            # Botão para baixar Ordem de Protótipo (sempre disponível)
-            # Botão para gerar e baixar Ordem de Protótipo
-            from generate_ordem_prototipo import generate_ordem_prototipo_pdf
-            if st.button("Gerar Ordem de Prototipo", key=f"gerar_ordem_{id_orcamento}"):
-                import tempfile
-                import os
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
-                    generate_ordem_prototipo_pdf(versoes[versao_idx]["data"], tmpfile.name)
-                    tmpfile.flush()
-                    with open(tmpfile.name, "rb") as fpdf:
-                        st.download_button("Baixar Ordem de Prototipo", fpdf, file_name=f"OrdemPrototipo_{id_orcamento}.pdf")
-                    os.unlink(tmpfile.name)
+            # Botão para baixar Ordem de Protótipo
+            proposta_data = {
+                "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
+                "cliente": orcamento_selecionado.get("Cliente", ""),
+                "responsavel": "",
+                "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                "produto": orcamento_selecionado.get("Produto", ""),
+                "quantidade": 2,  # Sempre 2 protótipos
+                "descrição": "",
+                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                "total": "",
+                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                "validade": "",
+                "prazo_de_entrega": "",
+            }
+            # Busca contato do cliente se possível
+            try:
+                cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
+                if not cliente_row.empty:
+                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+            except Exception:
+                pass
 
-            # Regras de botões por status
-            show_editar = False
-            show_excluir = False
-            show_aprovar = False
-            show_suspender = False
-            show_finalizar = False
-            if status == "Pendente":
-                show_editar = True
-                show_excluir = True
-                show_aprovar = True
-            elif status == "Suspenso":
-                show_excluir = True
-                show_aprovar = True
-            elif status == "Aprovado":
-                show_suspender = True
-                show_finalizar = True
+            # Monta descrição técnica detalhada dos componentes (ignora campos com valor "Nenhum" ou vazio)
+            try:
+                selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
+            except Exception:
+                selecoes = {}
+
+            descricao_componentes = []
+            def add_comp(nome, campos, label_map=None):
+                linhas = []
+                for campo in campos:
+                    valor = selecoes.get(campo)
+                    # Só inclui se valor não for vazio, None ou "Nenhum"
+                    if valor and str(valor).strip().lower() != "nenhum":
+                        if label_map and campo in label_map:
+                            label = label_map[campo]
+                        else:
+                            label = campo
+                            for prefix in ['sel_', 'paper_', 'mat_cost_', 'serv_cost_']:
+                                if label.startswith(prefix):
+                                    label = label[len(prefix):]
+                            label = label.replace("(frente) ou forro", "Frente/Forro")
+                            label = label.replace("(verso)", "Verso")
+                            label = label.replace("_", " ").strip().capitalize()
+                            if " " in label:
+                                label = label.split()[-1].capitalize()
+                        linhas.append(f"{label}: {valor}")
+                if linhas:
+                    # Título do bloco em negrito real (HTML) para PDF: <b>...</b>
+                    descricao_componentes.append(f"<b>{nome}:</b>\n" + "\n".join(linhas))
+
+            # Capa
+            add_comp("Capa", [
+                "sel_capa_papel", "sel_capa_impressao", "sel_capa_couro", "selected_laminacao", "selected_hot_stamping", "selected_silk"
+            ], label_map={
+                "sel_capa_papel": "Papel",
+                "sel_capa_impressao": "Impressão",
+                "sel_capa_couro": "Couro",
+                "selected_laminacao": "Laminação",
+                "selected_hot_stamping": "Hot stamping",
+                "selected_silk": "Silk"
+            })
+            # Miolo
+            add_comp("Miolo", [
+                "sel_miolo", "paper_miolo", "mat_cost_miolo", "serv_cost_miolo"
+            ], label_map={
+                "sel_miolo": "Tipo",
+                "paper_miolo": "Papel",
+                "mat_cost_miolo": "Material",
+                "serv_cost_miolo": "Serviço"
+            })
+            # Guarda (Frente)
+            add_comp("Guarda (Frente) ou Forro", [
+                "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
+            ], label_map={
+                "sel_guarda (frente) ou forro": "Tipo",
+                "paper_guarda (frente) ou forro": "Papel",
+                "mat_cost_guarda (frente) ou forro": "Material",
+                "serv_cost_guarda (frente) ou forro": "Serviço"
+            })
+            # Guarda (Verso)
+            add_comp("Guarda (Verso)", [
+                "sel_guarda (verso)", "paper_guarda (verso)", "mat_cost_guarda (verso)", "serv_cost_guarda (verso)"
+            ], label_map={
+                "sel_guarda (verso)": "Tipo",
+                "paper_guarda (verso)": "Papel",
+                "mat_cost_guarda (verso)": "Material",
+                "serv_cost_guarda (verso)": "Serviço"
+            })
+            # Bolsa
+            add_comp("Bolsa", [
+                "sel_bolsa", "paper_bolsa", "mat_cost_bolsa", "serv_cost_bolsa"
+            ], label_map={
+                "sel_bolsa": "Tipo",
+                "paper_bolsa": "Papel",
+                "mat_cost_bolsa": "Material",
+                "serv_cost_bolsa": "Serviço"
+            })
+            # Divisória
+            add_comp("Divisória", [
+                "sel_divisória", "paper_divisória", "mat_cost_divisória", "serv_cost_divisória"
+            ], label_map={
+                "sel_divisória": "Tipo",
+                "paper_divisória": "Papel",
+                "mat_cost_divisória": "Material",
+                "serv_cost_divisória": "Serviço"
+            })
+            # Adesivo
+            add_comp("Adesivo", [
+                "sel_adesivo", "paper_adesivo", "mat_cost_adesivo", "serv_cost_adesivo"
+            ], label_map={
+                "sel_adesivo": "Tipo",
+                "paper_adesivo": "Papel",
+                "mat_cost_adesivo": "Material",
+                "serv_cost_adesivo": "Serviço"
+            })
+            # Aviamentos (Wire-o, Elástico, etc)
+            for key in selecoes:
+                valor = selecoes[key]
+                if key.startswith("cd_") and valor and str(valor).strip().lower() != "nenhum":
+                    label = key.replace("cd_", "").replace("_", " ").capitalize()
+                    descricao_componentes.append(f"**{label}:** {valor}")
+
+            # Junta tudo em uma string única, convertendo Markdown/HTML para texto simples para PDF
+            import re
+            def markdown_to_plain(text):
+                # Remove ** e __ e converte <b> para maiúsculo simples
+                text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+                text = re.sub(r"<b>(.*?)</b>", lambda m: m.group(1).upper(), text)
+                return text
+
+            proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
+            proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
+
 
             col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
             with col_btn1:
