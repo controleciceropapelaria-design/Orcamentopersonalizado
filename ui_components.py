@@ -243,13 +243,25 @@ def display_history_page():
             selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
             for key, value in selecoes.items():
                 st.session_state[key] = value
+            # Preenche campos principais do formulário
             st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
-            st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+            try:
+                st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+            except Exception:
+                st.session_state['budget_quantity'] = 15000
             st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
+            # Preenche campos de acabamento explicitamente
+            for extra_key in [
+                'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
+                'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
+            ]:
+                if extra_key in selecoes:
+                    st.session_state[extra_key] = selecoes[extra_key]
             st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
             st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
             st.session_state['edit_loaded'] = True
-            st.success(f"Versão {versao_idx+1} carregada para edição!")
+            st.session_state['page'] = "Orçamento"
+            st.success(f"Orçamento {id_orcamento} carregado para edição!")
             st.rerun()
         if col_download.button("Baixar Proposta PDF desta versão"):
             pdf_path = versoes[versao_idx]["data"].get("PropostaPDF", "")
@@ -450,8 +462,25 @@ def display_history_page():
                         selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
                         for key, value in selecoes.items():
                             st.session_state[key] = value
+                        # Preenche campos principais do formulário
+                        st.session_state['selected_client'] = orcamento_selecionado.get('Cliente', '')
+                        try:
+                            st.session_state['budget_quantity'] = int(orcamento_selecionado.get('Quantidade', 15000))
+                        except Exception:
+                            st.session_state['budget_quantity'] = 15000
+                        st.session_state['sel_produto'] = orcamento_selecionado.get('Produto', '')
+                        # Preenche campos de acabamento explicitamente
+                        for extra_key in [
+                            'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
+                            'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
+                        ]:
+                            if extra_key in selecoes:
+                                st.session_state[extra_key] = selecoes[extra_key]
+                        st.session_state['ajustes'] = json.loads(orcamento_selecionado.get('AjustesJSON', '[]'))
                         st.session_state['editing_id'] = id_orcamento
+                        st.session_state['edit_loaded'] = True
                         st.session_state['page'] = "Orçamento"
+                        st.success(f"Orçamento {id_orcamento} carregado para edição!")
                         st.rerun()
                 with col_btn3:
                     if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
