@@ -486,7 +486,7 @@ def budget_page():
                         quantidade = budget_quantity
                     else:
                         quantidade = cover_cost_result.get("quantity", budget_quantity)
-                # Componentes Miolo, Guarda, Bolsa, Divisoria, Adesivo
+                # Componentes Miolo, Guarda, Bolsa, Divisoria, Adesivo, Forro
                 elif (
                     "Miolo" in item["name"]
                     or "Bolsa" in item["name"]
@@ -494,8 +494,8 @@ def budget_page():
                     or "Adesivo" in item["name"]
                     or "GUARDA FRENTE" in item["name"]
                     or "GUARDA VERSO" in item["name"]
+                    or "Forro" in item["name"]
                 ):
-                    # Busca o DataFrame e linha do componente conforme o nome
                     comp_row = None
                     if "Miolo" in item["name"]:
                         df_comp = df_miolos
@@ -508,15 +508,15 @@ def budget_page():
                     elif "Divisória" in item["name"]:
                         df_comp = df_divisorias
                         comp_col = "Divisoria"
-                        comp_nome = "Divisória"
+                        comp_nome = "Divisoria"
                     elif "Adesivo" in item["name"]:
                         df_comp = df_adesivos
                         comp_col = "Adesivo"
                         comp_nome = "Adesivo"
-                    elif "GUARDA FRENTE" in item["name"]:
+                    elif "GUARDA FRENTE" in item["name"] or "Forro" in item["name"]:
                         df_comp = df_guarda_forro
                         comp_col = "Item"
-                        comp_nome = "Guarda"
+                        comp_nome = "Forro" if "Forro" in item["name"] else "Guarda"
                     elif "GUARDA VERSO" in item["name"]:
                         df_comp = df_guarda_verso
                         comp_col = "GuardaVerso"
@@ -532,37 +532,39 @@ def budget_page():
                         except Exception:
                             comp_row = None
 
-                    # Se for material, calcula a quantidade de folhas
-                    if "Material" in item["name"] and comp_row is not None:
+                    if comp_row is not None and "QuantidadePapel" in comp_row and "QuantidadeAprovada" in comp_row:
                         qtd_papel = comp_row["QuantidadePapel"]
                         qtd_aprovada = comp_row["QuantidadeAprovada"]
-                        quantidade = (qtd_papel / qtd_aprovada) * budget_quantity if qtd_aprovada else budget_quantity
+                        try:
+                            qtd_papel = float(qtd_papel)
+                            qtd_aprovada = float(qtd_aprovada)
+                        except Exception:
+                            qtd_papel = qtd_aprovada = None
+                        if qtd_papel and qtd_aprovada:
+                            quantidade = (qtd_papel / qtd_aprovada) * budget_quantity
+                        else:
+                            quantidade = budget_quantity
                     else:
                         quantidade = budget_quantity
-                # ELÁSTICO, FITA DE CETIM, PAPELÃO (Aviamentos)
+                # Aviamentos, incluindo Rebite
                 else:
-                    # --- NOVO: Verificação robusta para aviamentos ---
                     def normalize(s):
                         return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').lower()
                     aviamentos = [
                         "elastico", "fita de cetim", "papelao", "ilhos", "ferragem",
-                        "rebites", "pendente", "saco adesivado", "wire-o"
+                        "rebite", "rebites", "pendente", "saco adesivado", "wire-o"
                     ]
                     name_norm = normalize(item["name"])
                     if any(av in name_norm for av in aviamentos):
                         aproveitamento = item.get("aproveitamento", 1)
                         quantidade = aproveitamento * budget_quantity
-                    # MOD+GGF
                     elif "MOD + GGF" in item["name"]:
-                        quantidade = budget_quantity    
-                    # ACABAMENTO HOT STAMPING
+                        quantidade = budget_quantity
                     elif "Acabamento - Hot Stamping" in item["name"]:
-                        quantidade = budget_quantity    
-                    # ACABAMENTO LAMINAÇÃO
+                        quantidade = budget_quantity
                     elif "Acabamento - Laminação" in item["name"]:
                         quantidade = budget_quantity
-                    # ACABAMENTO SILK
-                    elif "Acabamento - Silk" in item["name"]:   
+                    elif "Acabamento - Silk" in item["name"]:
                         quantidade = budget_quantity
                     else:
                         quantidade = ""
