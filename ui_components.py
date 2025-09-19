@@ -437,23 +437,12 @@ def display_history_page():
 
                 # Botões de ação em linha (restaurados todos: Excluir, Editar, Aprovar, Suspender, Finalizar)
                 col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
-                with col_btn2:
-                    if st.button("Editar Orçamento", key=f"editar_{id_orcamento}_details"):
-                        if 'edit_loaded' in st.session_state:
-                            del st.session_state['edit_loaded']
-                        st.session_state['editing_id'] = id_orcamento
-                        st.session_state['page'] = "Orçamento"
-                        st.rerun()
+                with col_btn1:
+                    if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                        idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
                         st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        # Salva no GitHub após aprovar
-                        try:
-                            github_token = st.secrets["github_token"]
-                        except Exception:
-                            github_token = None
-                        if github_token:
-                            storage.delete_orcamento_from_github(github_token)
-                        # else: não faz nada, apenas não tenta deletar do GitHub
+                        storage.delete_orcamento_from_github(st.secrets["github_token"])
                         st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
                         st.rerun()
                 with col_btn2:
