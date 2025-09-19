@@ -31,30 +31,30 @@ st.set_page_config(
 )
 
 # --- MENSAGEM FIXA NO TOPO DO APP ---
-def show_top_banner():
-    st.markdown(
-        """
-        <div style="
-            background-color:#fff3cd;
-            color:#856404;
-            border:1px solid #ffeeba;
-            padding:12px 20px;
-            border-radius:6px;
-            font-size:1.1em;
-            font-weight:bold;
-            text-align:center;
-            position:sticky;
-            top:0;
-            z-index:9999;
-            margin-bottom:18px;
-        ">
-        Olá Cicero Personalizado! Só para lembrar que sua fatura vence daqui a 10 dias. Regularize e evite o bloqueio do sistema.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+#def show_top_banner():
+#    st.markdown(
+#        """
+#        <div style="
+#            background-color:#fff3cd;
+#            color:#856404;
+#            border:1px solid #ffeeba;
+#            padding:12px 20px;
+#            border-radius:6px;
+#            font-size:1.1em;
+#            font-weight:bold;
+#            text-align:center;
+#            position:sticky;
+#            top:0;
+#            z-index:9999;
+#            margin-bottom:18px;
+#        ">
+#        Olá Cicero Personalizado! Só para lembrar que sua fatura vence daqui a 10 dias. Regularize e evite o bloqueio do sistema.
+#        </div>
+#        """,
+#        unsafe_allow_html=True
+#    )
 
-show_top_banner()
+#show_top_banner()
 
 def initialize_session_state():
     """Inicializa o estado da sessão para login e DataFrames."""
@@ -89,7 +89,7 @@ def budget_page():
             st.session_state['page'] = "Histórico de Orçamentos"
             st.rerun()
 
-    # Carrega os dados do orçamento para edição, se houver
+    # --- CORREÇÃO: Carregar dados do orçamento para edição ANTES de qualquer componente ser renderizado ---
     if editing_id and not st.session_state.get('edit_loaded'):
         df = st.session_state.df_orcamentos
         row = df[df['ID'] == editing_id]
@@ -100,17 +100,14 @@ def budget_page():
             try:
                 versoes = json.loads(versoes_json)
                 if versoes and isinstance(versoes, list):
-                    # Pega a última versão salva (a mais recente)
                     last_version = versoes[-1]["data"] if "data" in versoes[-1] else None
                 else:
                     last_version = None
             except Exception:
                 last_version = None
 
-            # Se houver uma versão, use ela, senão use o row atual
             dados_orcamento = last_version if last_version else row.to_dict()
-            # --- CORREÇÃO: Carregar todos os campos de componentes do orçamento salvo ---
-            selecoes = {}
+            # Carrega selecoes do orçamento salvo
             try:
                 selecoes = json.loads(dados_orcamento.get("SelecoesJSON", "{}"))
             except Exception:
@@ -123,11 +120,6 @@ def budget_page():
 
             # Preenche todos os campos de componentes salvos
             for key, value in selecoes.items():
-                st.session_state[key] = value
-
-            # Força o valor default dos selectbox para os componentes (corrige bug do Streamlit)
-            def force_selectbox_value(key, value):
-                # Streamlit só atualiza selectbox se o valor já existir nas opções
                 st.session_state[key] = value
 
             # Preenche campos principais do formulário
@@ -144,12 +136,12 @@ def budget_page():
                 'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
             ]:
                 if extra_key in selecoes:
-                    force_selectbox_value(extra_key, selecoes[extra_key])
+                    st.session_state[extra_key] = selecoes[extra_key]
 
             # Preenche campos de compras diretas (cd_) e personalizados (mat_cost_, serv_cost_, paper_)
             for key in selecoes:
                 if key.startswith(('cd_', 'mat_cost_', 'serv_cost_', 'paper_', 'util_', 'rings_', 'vu_')):
-                    force_selectbox_value(key, selecoes[key])
+                    st.session_state[key] = selecoes[key]
 
             st.session_state['ajustes'] = json.loads(dados_orcamento.get('AjustesJSON', '[]'))
             st.session_state['edit_loaded'] = True
