@@ -256,357 +256,236 @@ def display_history_page():
                 st.warning("Arquivo PDF não encontrado para esta versão.")
 
         # Expander de detalhes e botões de ação por orçamento
-        # --- INÍCIO DO BLOCO ADMIN ---
-        # Só executa o bloco admin se estiver na aba admin
-        if st.session_state.get("page") == "Painel Admin":
-            with st.expander("Ver Detalhes Completos de um Orçamento"):
-                orcamento_completo = st.session_state.df_orcamentos
-                id_orcamento_admin = st.selectbox("Selecione o ID do Orçamento", options=orcamento_completo['ID'], key="admin_orc_select")
-                if id_orcamento_admin:
-                    orcamento_selecionado_admin = orcamento_completo[orcamento_completo['ID'] == id_orcamento_admin].iloc[0]
-                    df_detalhes_admin = orcamento_selecionado_admin.drop('AjustesJSON').to_frame().T.copy()
-                    for col in df_detalhes_admin.columns:
-                        if df_detalhes_admin[col].dtype == "object":
-                            try:
-                                df_detalhes_admin[col] = pd.to_numeric(df_detalhes_admin[col], errors="raise")
-                            except Exception:
-                                df_detalhes_admin[col] = df_detalhes_admin[col].astype(str)
-                    st.dataframe(df_detalhes_admin)
-                    
-                    # Mostra status colorido no topo do expander
-                    status = orcamento_selecionado_admin.get('StatusOrcamento', 'Pendente')
-                    if pd.isna(status):
-                        status = "Pendente"
-                    status = str(status).strip().capitalize()
-                    status_colors = {
-                        "Pendente": "#ff9800",
-                        "Aprovado": "#2ecc40",
-                        "Suspenso": "#ffeb3b",
-                        "Finalizado": "#e74c3c"
-                    }
-                    st.markdown(
-                        f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
-                        unsafe_allow_html=True
-                    )
-
-                    # Corrigir acesso à versão selecionada
-                    versoes_json = orcamento_selecionado_admin.get("VersoesJSON", "[]")
+        with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
+            id_orcamento = user_history.loc[selected_idx, 'ID']
+            orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
+            st.write(f"**Detalhes Completos do Orçamento {id_orcamento}:**")
+            # CORREÇÃO: converte colunas object para número ou string
+            df_detalhes = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
+            for col in df_detalhes.columns:
+                if df_detalhes[col].dtype == "object":
                     try:
-                        versoes = json.loads(versoes_json)
+                        df_detalhes[col] = pd.to_numeric(df_detalhes[col], errors="raise")
                     except Exception:
-                        versoes = []
-                    versoes = versoes if isinstance(versoes, list) else []
-                    versoes.append({"timestamp": orcamento_selecionado_admin.get("Data", ""), "data": orcamento_selecionado_admin.to_dict()})
-                    versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
-                    versao_idx = st.selectbox(
-                        "Escolha a versão:",
-                        options=list(range(len(versoes))),
-                        format_func=lambda i: versao_labels[i],
-                        key=f"admin_versao_select_{id_orcamento_admin}"
-                    )
-                    versao_data = versoes[versao_idx]["data"] if versoes and versao_idx < len(versoes) else orcamento_selecionado_admin.to_dict()
+                        df_detalhes[col] = df_detalhes[col].astype(str)
+            st.dataframe(df_detalhes)
+            # Status visual
+            status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
+            if pd.isna(status):
+                status = "Pendente"
+            status_colors = {
+                "Pendente": "orange",
+                "Aprovado": "green",
+                "Suspenso": "gray",
+                "Finalizado": "red"
+            }
+            st.markdown(
+                f"<span style='color:{status_colors.get(status, 'black')};font-weight:bold;'>Status: {status}</span>",
+                unsafe_allow_html=True
+            )
 
-                    # Botão para baixar o PDF da proposta, se existir
-                    pdf_path = versao_data.get("PropostaPDF", "")
-                    if pdf_path and os.path.exists(pdf_path):
-                        with open(pdf_path, "rb") as fpdf:
-                            st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
+            # Botão para baixar o PDF da proposta, se existir
+            pdf_path = orcamento_selecionado.get("PropostaPDF", "")
+            if pdf_path and os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as fpdf:
+                    st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
 
-                    # Regras de exibição dos botões
-                    btns = []
-                    if status == "Pendente":
-                        btns = ["editar", "excluir", "aprovar"]
-                    elif status == "Aprovado":
-                        btns = ["editar", "suspender", "finalizar", "ordem"]
-                    elif status == "Suspenso":
-                        btns = ["editar", "excluir", "aprovar", "finalizar", "ordem"]
-                    elif status == "Finalizado":
-                        btns = ["editar", "ordem"]
+            # Botão para baixar Ordem de Protótipo
+            proposta_data = {
+                "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
+                "cliente": orcamento_selecionado.get("Cliente", ""),
+                "responsavel": "",
+                "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                "produto": orcamento_selecionado.get("Produto", ""),
+                "quantidade": 2,  # Sempre 2 protótipos
+                "descrição": "",
+                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                "total": "",
+                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                "validade": "",
+                "prazo_de_entrega": "",
+            }
+            # Busca contato do cliente se possível
+            try:
+                cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
+                if not cliente_row.empty:
+                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+            except Exception:
+                pass
 
-                    cols = st.columns(len(btns)) if btns else []
+            # Monta descrição técnica detalhada dos componentes (ignora campos com valor "Nenhum" ou vazio)
+            try:
+                selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
+            except Exception:
+                selecoes = {}
 
-                    st.markdown("""
-                    <style>
-                    /* Botão Aprovar */
-                    div[data-testid="stButton"] button:has(span:contains('Aprovar Orçamento')) {
-                        background-color: #fff !important;
-                        color: #2ecc40 !important;
-                        border: 2px solid #2ecc40 !important;
-                    }
-                    /* Botão Suspender */
-                    div[data-testid="stButton"] button:has(span:contains('Suspender Orçamento')) {
-                        background-color: #fff !important;
-                        color: #ffeb3b !important;
-                        border: 2px solid #ffeb3b !important;
-                    }
-                    /* Botão Finalizar */
-                    div[data-testid="stButton"] button:has(span:contains('Finalizar Orçamento')) {
-                        background-color: #fff !important;
-                        color: #e74c3c !important;
-                        border: 2px solid #e74c3c !important;
-                    }
-                    /* Botão Ordem */
-                    div[data-testid="stButton"] button:has(span:contains('Gerar Ordem de Protótipo')) {
-                        background-color: #fff !important;
-                        color: #222 !important;
-                        border: 2px solid #222 !important;
-                    }
-                    /* Botão Excluir */
-                    div[data-testid="stButton"] button:has(span:contains('Excluir Orçamento')) {
-                        background-color: #fff !important;
-                        color: #f44336 !important;
-                        border: 2px solid #f44336 !important;
-                    }
-                    /* Botão Editar */
-                    div[data-testid="stButton"] button:has(span:contains('Editar esta versão')) {
-                        background-color: #fff !important;
-                        color: #1976d2 !important;
-                        border: 2px solid #1976d2 !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
+            descricao_componentes = []
+            def add_comp(nome, campos, label_map=None):
+                linhas = []
+                for campo in campos:
+                    valor = selecoes.get(campo)
+                    # Só inclui se valor não for vazio, None ou "Nenhum"
+                    if valor and str(valor).strip().lower() != "nenhum":
+                        if label_map and campo in label_map:
+                            label = label_map[campo]
+                        else:
+                            label = campo
+                            for prefix in ['sel_', 'paper_', 'mat_cost_', 'serv_cost_']:
+                                if label.startswith(prefix):
+                                    label = label[len(prefix):]
+                            label = label.replace("(frente) ou forro", "Frente/Forro")
+                            label = label.replace("(verso)", "Verso")
+                            label = label.replace("_", " ").strip().capitalize()
+                            if " " in label:
+                                label = label.split()[-1].capitalize()
+                        linhas.append(f"{label}: {valor}")
+                if linhas:
+                    # Título do bloco em negrito real (HTML) para PDF: <b>...</b>
+                    descricao_componentes.append(f"<b>{nome}:</b>\n" + "\n".join(linhas))
 
-                    for idx, btn in enumerate(btns):
-                        with cols[idx]:
-                            if btn == "editar":
-                                if st.button("Editar esta versão", key=f"editar_{id_orcamento_admin}_details"):
-                                    selecoes = json.loads(versao_data.get("SelecoesJSON", "{}"))
-                                    for key, value in selecoes.items():
-                                        st.session_state[key] = value
-                                    st.session_state['selected_client'] = versao_data.get('Cliente', '')
-                                    try:
-                                        st.session_state['budget_quantity'] = int(versao_data.get('Quantidade', 15000))
-                                    except Exception:
-                                        st.session_state['budget_quantity'] = 15000
-                                    st.session_state['sel_produto'] = versao_data.get('Produto', '')
-                                    for extra_key in [
-                                        'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                                        'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                                    ]:
-                                        if extra_key in selecoes:
-                                            st.session_state[extra_key] = selecoes[extra_key]
-                                    st.session_state['ajustes'] = json.loads(versao_data.get('AjustesJSON', '[]'))
-                                    st.session_state['editing_id'] = versao_data.get('ID', '')
-                                    st.session_state['edit_loaded'] = True
-                                    st.session_state['page'] = "Orçamento"
-                                    st.success(f"Versão {versao_idx+1} carregada para edição!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #1976d2 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "excluir":
-                                if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento_admin}_details"):
-                                    idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.delete_orcamento_from_github(st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} excluído com sucesso!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #f44336 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "aprovar":
-                                if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento_admin}_details"):
-                                    idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} aprovado!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #2ecc40 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "suspender":
-                                if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento_admin}_details"):
-                                    idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} suspenso!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "finalizar":
-                                if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento_admin}_details"):
-                                    idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} finalizado!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #e74c3c !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "ordem":
-                                custom_btn_style = f"""
-                                <style>
-                                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento_admin} {{
-                                    background-color: #fff !important;
-                                    color: #222 !important;
-                                    border: 1px solid #ccc !important;
-                                }}
-                                </style>
-                                """
-                                st.markdown(custom_btn_style, unsafe_allow_html=True)
-                                if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento_admin}"):
-                                    from generate_ordem_prototipo import generate_ordem_prototipo_pdf
-                                    import os
-                                    from datetime import datetime
-                                    proposta_data = {
-                                        "data": datetime.now().strftime("%d/%m/%Y"),
-                                        "cliente": orcamento_selecionado_admin.get("Cliente", ""),
-                                        "responsavel": "",
-                                        "numero_orcamento": orcamento_selecionado_admin.get("ID", ""),
-                                        "versao_orcamento": orcamento_selecionado_admin.get("VersoesOrcamento", 1),
-                                        "produto": orcamento_selecionado_admin.get("Produto", ""),
-                                        "quantidade": 2,
-                                        "descrição": orcamento_selecionado_admin.get("descrição", ""),
-                                        "Unitario": orcamento_selecionado_admin.get("PrecoVenda", ""),
-                                        "total": "",
-                                        "atendente": orcamento_selecionado_admin.get("NomeOrcamentista", ""),
-                                        "validade": "",
-                                        "prazo_de_entrega": "",
-                                    }
-                                    try:
-                                        cliente_row = st.session_state.df_clientes[
-                                            st.session_state.df_clientes["Nome"] == orcamento_selecionado_admin.get("Cliente", "")
-                                        ]
-                                        if not cliente_row.empty:
-                                            proposta_data["responsavel"] = cliente_row["Contato"].values[0]
-                                    except Exception:
-                                        pass
-                                    propostas_dir = "Propostas"
-                                    if not os.path.exists(propostas_dir):
-                                        os.makedirs(propostas_dir, exist_ok=True)
-                                    ordem_path = os.path.join(
-                                        propostas_dir,
-                                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                                    )
-                                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                                    if os.path.exists(ordem_path):
-                                        with open(ordem_path, "rb") as fpdf:
-                                            st.download_button(
-                                                "Baixar Ordem de Protótipo PDF",
-                                                fpdf,
-                                                file_name=os.path.basename(ordem_path),
-                                                key=f"download_ordem_{id_orcamento_admin}"
-                                            )
-        # --- FIM DO BLOCO ADMIN ---
-        # --- INÍCIO DO BLOCO USUÁRIO ---
-        else:
-            with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
-                id_orcamento = user_history.loc[selected_idx, 'ID']
-                orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
-                df_detalhes_usuario = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
-                for col in df_detalhes_usuario.columns:
-                    if df_detalhes_usuario[col].dtype == "object":
-                        try:
-                            df_detalhes_usuario[col] = pd.to_numeric(df_detalhes_usuario[col], errors="raise")
-                        except Exception:
-                            df_detalhes_usuario[col] = df_detalhes_usuario[col].astype(str)
-                st.dataframe(df_detalhes_usuario)
+            # Capa
+            add_comp("Capa", [
+                "sel_capa_papel", "sel_capa_impressao", "sel_capa_couro", "selected_laminacao", "selected_hot_stamping", "selected_silk"
+            ], label_map={
+                "sel_capa_papel": "Papel",
+                "sel_capa_impressao": "Impressão",
+                "sel_capa_couro": "Couro",
+                "selected_laminacao": "Laminação",
+                "selected_hot_stamping": "Hot stamping",
+                "selected_silk": "Silk"
+            })
+            # Miolo
+            add_comp("Miolo", [
+                "sel_miolo", "paper_miolo", "mat_cost_miolo", "serv_cost_miolo"
+            ], label_map={
+                "sel_miolo": "Tipo",
+                "paper_miolo": "Papel",
+                "mat_cost_miolo": "Material",
+                "serv_cost_miolo": "Serviço"
+            })
+            # Guarda (Frente)
+            add_comp("Guarda (Frente) ou Forro", [
+                "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
+            ], label_map={
+                "sel_guarda (frente) ou forro": "Tipo",
+                "paper_guarda (frente) ou forro": "Papel",
+                "mat_cost_guarda (frente) ou forro": "Material",
+                "serv_cost_guarda (frente) ou forro": "Serviço"
+            })
+            # Guarda (Verso)
+            add_comp("Guarda (Verso)", [
+                "sel_guarda (verso)", "paper_guarda (verso)", "mat_cost_guarda (verso)", "serv_cost_guarda (verso)"
+            ], label_map={
+                "sel_guarda (verso)": "Tipo",
+                "paper_guarda (verso)": "Papel",
+                "mat_cost_guarda (verso)": "Material",
+                "serv_cost_guarda (verso)": "Serviço"
+            })
+            # Bolsa
+            add_comp("Bolsa", [
+                "sel_bolsa", "paper_bolsa", "mat_cost_bolsa", "serv_cost_bolsa"
+            ], label_map={
+                "sel_bolsa": "Tipo",
+                "paper_bolsa": "Papel",
+                "mat_cost_bolsa": "Material",
+                "serv_cost_bolsa": "Serviço"
+            })
+            # Divisória
+            add_comp("Divisória", [
+                "sel_divisória", "paper_divisória", "mat_cost_divisória", "serv_cost_divisória"
+            ], label_map={
+                "sel_divisória": "Tipo",
+                "paper_divisória": "Papel",
+                "mat_cost_divisória": "Material",
+                "serv_cost_divisória": "Serviço"
+            })
+            # Adesivo
+            add_comp("Adesivo", [
+                "sel_adesivo", "paper_adesivo", "mat_cost_adesivo", "serv_cost_adesivo"
+            ], label_map={
+                "sel_adesivo": "Tipo",
+                "paper_adesivo": "Papel",
+                "mat_cost_adesivo": "Material",
+                "serv_cost_adesivo": "Serviço"
+            })
+            # Aviamentos (Wire-o, Elástico, etc)
+            for key in selecoes:
+                valor = selecoes[key]
+                if key.startswith("cd_") and valor and str(valor).strip().lower() != "nenhum":
+                    label = key.replace("cd_", "").replace("_", " ").capitalize()
+                    descricao_componentes.append(f"**{label}:** {valor}")
 
-                # Mostra status colorido no topo do expander
-                status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
-                if pd.isna(status):
-                    status = "Pendente"
-                status = str(status).strip().capitalize()
-                status_colors = {
-                    "Pendente": "#ff9800",
-                    "Aprovado": "#2ecc40",
-                    "Suspenso": "#ffeb3b",
-                    "Finalizado": "#e74c3c"
-                }
-                st.markdown(
-                    f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
-                    unsafe_allow_html=True
-                )
+            # Junta tudo em uma string única, convertendo Markdown/HTML para texto simples para PDF
+            import re
+            def markdown_to_plain(text):
+                # Remove ** e __ e converte <b> para maiúsculo simples
+                text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+                text = re.sub(r"<b>(.*?)</b>", lambda m: m.group(1).upper(), text)
+                return text
 
-                # Corrigir acesso à versão selecionada
-                versoes_json = orcamento_selecionado.get("VersoesJSON", "[]")
-                try:
-                    versoes = json.loads(versoes_json)
-                except Exception:
-                    versoes = []
-                versoes = versoes if isinstance(versoes, list) else []
-                versoes.append({"timestamp": orcamento_selecionado.get("Data", ""), "data": orcamento_selecionado.to_dict()})
-                versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
-                versao_idx = st.selectbox(
-                    "Escolha a versão:",
-                    options=list(range(len(versoes))),
-                    format_func=lambda i: versao_labels[i],
-                    key=f"versao_select_{id_orcamento}"
-                )
-                versao_data = versoes[versao_idx]["data"] if versoes and versao_idx < len(versoes) else orcamento_selecionado.to_dict()
+            proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
+            proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
 
-                # Botão para baixar o PDF da proposta, se existir
-                pdf_path = versao_data.get("PropostaPDF", "")
-                if pdf_path and os.path.exists(pdf_path):
-                    with open(pdf_path, "rb") as fpdf:
-                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento}")
-
-                # Botão para duplicar o orçamento
-                if st.button("Duplicar Orçamento", key=f"duplicate_orcamento_{id_orcamento}"):
-                    novo_id = str(pd.Timestamp.now().timestamp()).split(".")[0]
-                    novo_orcamento = orcamento_selecionado.copy()
-                    novo_orcamento["ID"] = novo_id
-                    novo_orcamento["Data"] = pd.Timestamp.now()
-                    novo_orcamento["StatusOrcamento"] = "Pendente"
-                    novo_orcamento["Usuario"] = st.session_state.username
-                    novo_orcamento["NomeOrcamentista"] = st.session_state.nome_completo
-                    novo_orcamento["VersoesJSON"] = json.dumps([{"data": novo_orcamento.to_dict()}])
-                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.append(novo_orcamento, ignore_index=True)
+            # Botões de ação em linha (agora inclui o botão de edição dentro do expander)
+            col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
+            with col_btn1:
+                if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
+                    selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
+                    for key, value in selecoes.items():
+                        st.session_state[key] = value
+                    st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
+                    try:
+                        st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+                    except Exception:
+                        st.session_state['budget_quantity'] = 15000
+                    st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
+                    for extra_key in [
+                        'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
+                        'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
+                    ]:
+                        if extra_key in selecoes:
+                            st.session_state[extra_key] = selecoes[extra_key]
+                    st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
+                    st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
+                    st.session_state['edit_loaded'] = True
+                    st.session_state['page'] = "Orçamento"
+                    st.success(f"Versão {versao_idx+1} carregada para edição!")
+                    st.rerun()
+            with col_btn2:
+                if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
+                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    storage.delete_orcamento_from_github(st.secrets["github_token"])
+                    st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
+                    st.rerun()
+            with col_btn3:
+                if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
+                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Aprovado"
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                    st.success("Orçamento duplicado com sucesso!")
+                    st.success(f"Orçamento {id_orcamento} aprovado!")
+                    st.rerun()
+            with col_btn4:
+                if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
+                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Suspenso"
+                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                    st.success(f"Orçamento {id_orcamento} suspenso!")
+                    st.rerun()
+            with col_btn5:
+                if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
+                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
+                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Finalizado"
+                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                    st.success(f"Orçamento {id_orcamento} finalizado!")
                     st.rerun()
 
-                # Lógica para edição rápida de campos selecionados
-                with st.form("edit_quick_form"):
-                    st.write("Edição Rápida:")
-                    campos_editaveis = ["Produto", "Quantidade", "PrecoVenda", "Descricao"]
-                    valores_atualizar = {}
-                    for campo in campos_editaveis:
-                        valor_atual = versao_data.get(campo, "")
-                        novo_valor = st.text_input(f"{campo}", value=valor_atual, key=f"edit_{campo}")
-                        if novo_valor != valor_atual:
-                            valores_atualizar[campo] = novo_valor
-                    if st.form_submit_button("Salvar Alterações"):
-                        if valores_atualizar:
-                            for campo, novo_valor in valores_atualizar.items():
-                                st.session_state.df_orcamentos.loc[st.session_state.df_orcamentos["ID"] == id_orcamento, campo] = novo_valor
-                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                            storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                            st.success("Alterações salvas com sucesso!")
-                            st.rerun()
-                        else:
-                            st.info("Nenhuma alteração detectada.")
-
-                # Exibe detalhes da versão selecionada
-                st.write("### Detalhes da Versão Selecionada")
-                detalhes_json = orcamento_selecionado.get("VersoesJSON", "[]")
-                try:
-                    detalhes = json.loads(detalhes_json)
-                except Exception:
-                    detalhes = []
-                detalhes = detalhes if isinstance(detalhes, list) else []
-                if detalhes:
-                    detalhes_versao = detalhes[versao_idx] if versao_idx < len(detalhes) else detalhes[-1]
-                    df_detalhes_versao = pd.DataFrame([detalhes_versao])
-                    for col in df_detalhes_versao.columns:
-                        if df_detalhes_versao[col].dtype == "object":
-                            try:
-                                df_detalhes_versao[col] = pd.to_numeric(df_detalhes_versao[col], errors="raise")
-                            except Exception:
-                                df_detalhes_versao[col] = df_detalhes_versao[col].astype(str)
-                    st.dataframe(df_detalhes_versao)
-                else:
-                    st.info("Nenhum detalhe encontrado para esta versão.")
-
-                # Botão para excluir a versão selecionada
-                if st.button("Excluir Esta Versão", key=f"excluir_versao_{id_orcamento}"):
-                    if detalhes and versao_idx < len(detalhes):
-                        detalhes.pop(versao_idx)
-                        novo_detalhes_json = json.dumps(detalhes)
-                        st.session_state.df_orcamentos.loc[st.session_state.df_orcamentos["ID"] == id_orcamento, "VersoesJSON"] = novo_detalhes_json
-                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                        st.success("Versão excluída com sucesso!")
-                        st.rerun()
-                    else:
-                        st.warning("Versão não encontrada ou índice inválido.")
-
+                # ...existing code for ajustes_json, ajustes_lista, etc...
     else:
         st.info("Nenhum orçamento encontrado para o seu usuário.")
 
@@ -889,213 +768,119 @@ def display_admin_panel():
                             except Exception:
                                 df_detalhes_admin[col] = df_detalhes_admin[col].astype(str)
                     st.dataframe(df_detalhes_admin)
-                    
-                    # Mostra status colorido no topo do expander
-                    status = orcamento_selecionado_admin.get('StatusOrcamento', 'Pendente')
-                    if pd.isna(status):
-                        status = "Pendente"
-                    status = str(status).strip().capitalize()
-                    status_colors = {
-                        "Pendente": "#ff9800",
-                        "Aprovado": "#2ecc40",
-                        "Suspenso": "#ffeb3b",
-                        "Finalizado": "#e74c3c"
-                    }
-                    st.markdown(
-                        f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
-                        unsafe_allow_html=True
-                    )
-
-                    # Corrigir acesso à versão selecionada
-                    versoes_json = orcamento_selecionado_admin.get("VersoesJSON", "[]")
+                    # CORREÇÃO: converte colunas object para número ou string
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
                     try:
-                        versoes = json.loads(versoes_json)
-                    except Exception:
-                        versoes = []
-                    versoes = versoes if isinstance(versoes, list) else []
-                    versoes.append({"timestamp": orcamento_selecionado_admin.get("Data", ""), "data": orcamento_selecionado_admin.to_dict()})
-                    versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
-                    versao_idx = st.selectbox(
-                        "Escolha a versão:",
-                        options=list(range(len(versoes))),
-                        format_func=lambda i: versao_labels[i],
-                        key=f"admin_versao_select_{id_orcamento_admin}"
-                    )
-                    versao_data = versoes[versao_idx]["data"] if versoes and versao_idx < len(versoes) else orcamento_selecionado_admin.to_dict()
-
-                    # Botão para baixar o PDF da proposta, se existir
-                    pdf_path = versao_data.get("PropostaPDF", "")
-                    if pdf_path and os.path.exists(pdf_path):
-                        with open(pdf_path, "rb") as fpdf:
-                            st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
-
-                    # Regras de exibição dos botões
-                    btns = []
-                    if status == "Pendente":
-                        btns = ["editar", "excluir", "aprovar"]
-                    elif status == "Aprovado":
-                        btns = ["editar", "suspender", "finalizar", "ordem"]
-                    elif status == "Suspenso":
-                        btns = ["editar", "excluir", "aprovar", "finalizar", "ordem"]
-                    elif status == "Finalizado":
-                        btns = ["editar", "ordem"]
-
-                    cols = st.columns(len(btns)) if btns else []
-
-                    st.markdown("""
-                    <style>
-                    /* Botão Aprovar */
-                    div[data-testid="stButton"] button:has(span:contains('Aprovar Orçamento')) {
-                        background-color: #fff !important;
-                        color: #2ecc40 !important;
-                        border: 2px solid #2ecc40 !important;
-                    }
-                    /* Botão Suspender */
-                    div[data-testid="stButton"] button:has(span:contains('Suspender Orçamento')) {
-                        background-color: #fff !important;
-                        color: #ffeb3b !important;
-                        border: 2px solid #ffeb3b !important;
-                    }
-                    /* Botão Finalizar */
-                    div[data-testid="stButton"] button:has(span:contains('Finalizar Orçamento')) {
-                        background-color: #fff !important;
-                        color: #e74c3c !important;
-                        border: 2px solid #e74c3c !important;
-                    }
-                    /* Botão Ordem */
-                    div[data-testid="stButton"] button:has(span:contains('Gerar Ordem de Protótipo')) {
-                        background-color: #fff !important;
-                        color: #222 !important;
-                        border: 2px solid #222 !important;
-                    }
-                    /* Botão Excluir */
-                    div[data-testid="stButton"] button:has(span:contains('Excluir Orçamento')) {
-                        background-color: #fff !important;
-                        color: #f44336 !important;
-                        border: 2px solid #f44336 !important;
-                    }
-                    /* Botão Editar */
-                    div[data-testid="stButton"] button:has(span:contains('Editar esta versão')) {
-                        background-color: #fff !important;
-                        color: #1976d2 !important;
-                        border: 2px solid #1976d2 !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-
-                    for idx, btn in enumerate(btns):
-                        with cols[idx]:
-                            if btn == "editar":
-                                if st.button("Editar esta versão", key=f"editar_{id_orcamento_admin}_details"):
-                                    selecoes = json.loads(versao_data.get("SelecoesJSON", "{}"))
-                                    for key, value in selecoes.items():
-                                        st.session_state[key] = value
-                                    st.session_state['selected_client'] = versao_data.get('Cliente', '')
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
                                     try:
-                                        st.session_state['budget_quantity'] = int(versao_data.get('Quantidade', 15000))
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
                                     except Exception:
-                                        st.session_state['budget_quantity'] = 15000
-                                    st.session_state['sel_produto'] = versao_data.get('Produto', '')
-                                    for extra_key in [
-                                        'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                                        'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                                    ]:
-                                        if extra_key in selecoes:
-                                            st.session_state[extra_key] = selecoes[extra_key]
-                                    st.session_state['ajustes'] = json.loads(versao_data.get('AjustesJSON', '[]'))
-                                    st.session_state['editing_id'] = versao_data.get('ID', '')
-                                    st.session_state['edit_loaded'] = True
-                                    st.session_state['page'] = "Orçamento"
-                                    st.success(f"Versão {versao_idx+1} carregada para edição!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #1976d2 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "excluir":
-                                if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento_admin}_details"):
-                                    idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.delete_orcamento_from_github(st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} excluído com sucesso!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #f44336 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "aprovar":
-                                if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento_admin}_details"):
-                                    idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} aprovado!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #2ecc40 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "suspender":
-                                if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento_admin}_details"):
-                                    idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} suspenso!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "finalizar":
-                                if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento_admin}_details"):
-                                    idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
-                                    st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
-                                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                                    st.success(f"Orçamento {id_orcamento_admin} finalizado!")
-                                    st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #e74c3c !important; color: #fff !important;}</style>', unsafe_allow_html=True)
-                            elif btn == "ordem":
-                                custom_btn_style = f"""
-                                <style>
-                                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento_admin} {{
-                                    background-color: #fff !important;
-                                    color: #222 !important;
-                                    border: 1px solid #ccc !important;
-                                }}
-                                </style>
-                                """
-                                st.markdown(custom_btn_style, unsafe_allow_html=True)
-                                if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento_admin}"):
-                                    from generate_ordem_prototipo import generate_ordem_prototipo_pdf
-                                    import os
-                                    from datetime import datetime
-                                    proposta_data = {
-                                        "data": datetime.now().strftime("%d/%m/%Y"),
-                                        "cliente": orcamento_selecionado_admin.get("Cliente", ""),
-                                        "responsavel": "",
-                                        "numero_orcamento": orcamento_selecionado_admin.get("ID", ""),
-                                        "versao_orcamento": orcamento_selecionado_admin.get("VersoesOrcamento", 1),
-                                        "produto": orcamento_selecionado_admin.get("Produto", ""),
-                                        "quantidade": 2,
-                                        "descrição": orcamento_selecionado_admin.get("descrição", ""),
-                                        "Unitario": orcamento_selecionado_admin.get("PrecoVenda", ""),
-                                        "total": "",
-                                        "atendente": orcamento_selecionado_admin.get("NomeOrcamentista", ""),
-                                        "validade": "",
-                                        "prazo_de_entrega": "",
-                                    }
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
                                     try:
-                                        cliente_row = st.session_state.df_clientes[
-                                            st.session_state.df_clientes["Nome"] == orcamento_selecionado_admin.get("Cliente", "")
-                                        ]
-                                        if not cliente_row.empty:
-                                            proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
                                     except Exception:
-                                        pass
-                                    propostas_dir = "Propostas"
-                                    if not os.path.exists(propostas_dir):
-                                        os.makedirs(propostas_dir, exist_ok=True)
-                                    ordem_path = os.path.join(
-                                        propostas_dir,
-                                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                                    )
-                                    generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                                    if os.path.exists(ordem_path):
-                                        with open(ordem_path, "rb") as fpdf:
-                                            st.download_button(
-                                                "Baixar Ordem de Protótipo PDF",
-                                                fpdf,
-                                                file_name=os.path.basename(ordem_path),
-                                                key=f"download_ordem_{id_orcamento_admin}"
-                                            )
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
