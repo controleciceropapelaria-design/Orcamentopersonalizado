@@ -431,23 +431,25 @@ def display_history_page():
             col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
             with col_btn1:
                 if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
-                    selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
+                    # Corrigir: sempre usar os dados da versão selecionada (versoes[versao_idx]["data"])
+                    versao_data = versoes[versao_idx]["data"]
+                    selecoes = json.loads(versao_data.get("SelecoesJSON", "{}"))
                     for key, value in selecoes.items():
                         st.session_state[key] = value
-                    st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
+                    st.session_state['selected_client'] = versao_data.get('Cliente', '')
                     try:
-                        st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+                        st.session_state['budget_quantity'] = int(versao_data.get('Quantidade', 15000))
                     except Exception:
                         st.session_state['budget_quantity'] = 15000
-                    st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
+                    st.session_state['sel_produto'] = versao_data.get('Produto', '')
                     for extra_key in [
                         'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
                         'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
                     ]:
                         if extra_key in selecoes:
                             st.session_state[extra_key] = selecoes[extra_key]
-                    st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
-                    st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
+                    st.session_state['ajustes'] = json.loads(versao_data.get('AjustesJSON', '[]'))
+                    st.session_state['editing_id'] = versao_data.get('ID', '')
                     st.session_state['edit_loaded'] = True
                     st.session_state['page'] = "Orçamento"
                     st.success(f"Versão {versao_idx+1} carregada para edição!")
@@ -782,6 +784,23 @@ def display_admin_panel():
                                     except Exception:
                                         df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
                             st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
+                    ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
+                    try:
+                        ajustes_lista_admin = json.loads(ajustes_json_admin)
+                        if ajustes_lista_admin:
+                            st.write("**Ajustes Manuais Aplicados:**")
+                            df_ajustes_admin = pd.DataFrame(ajustes_lista_admin)
+                            for col in df_ajustes_admin.columns:
+                                if df_ajustes_admin[col].dtype == "object":
+                                    try:
+                                        df_ajustes_admin[col] = pd.to_numeric(df_ajustes_admin[col], errors="raise")
+                                    except Exception:
+                                        df_ajustes_admin[col] = df_ajustes_admin[col].astype(str)
+                            st.dataframe(df_ajustes_admin, width='stretch')
+                    except (json.JSONDecodeError, TypeError):
+                        st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                     except (json.JSONDecodeError, TypeError):
                         st.warning("Não foi possível ler os detalhes dos ajustes deste orçamento.")
                     ajustes_json_admin = orcamento_selecionado_admin.get('AjustesJSON', '[]')
