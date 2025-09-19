@@ -30,6 +30,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- MENSAGEM FIXA NO TOPO DO APP ---
+def show_top_banner():
+    st.markdown(
+        """
+        <div style="
+            background-color:#fff3cd;
+            color:#856404;
+            border:1px solid #ffeeba;
+            padding:12px 20px;
+            border-radius:6px;
+            font-size:1.1em;
+            font-weight:bold;
+            text-align:center;
+            position:sticky;
+            top:0;
+            z-index:9999;
+            margin-bottom:18px;
+        ">
+        Olá Cicero Personalizado! Só para lembrar que sua fatura vence daqui a 10 dias. Regularize e evite o bloqueio do sistema.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+show_top_banner()
+
 def initialize_session_state():
     """Inicializa o estado da sessão para login e DataFrames."""
     if 'logged_in' not in st.session_state:
