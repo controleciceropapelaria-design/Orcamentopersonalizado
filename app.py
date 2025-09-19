@@ -238,7 +238,11 @@ def budget_page():
                             direct_purchases_cats
                         )
             else:
-                paper_cover_options = [p for p in paper_options if 'couche' in p.lower() or 'policromia' in p.lower()]
+                # Se o produto for Policromia, mostra todos os papéis do CSV; senão, pode restringir conforme desejado
+                if "POLICROMIA" in selected_product.upper():
+                    paper_cover_options = list(paper_options)
+                else:
+                    paper_cover_options = []  # Aqui você pode definir outro filtro se quiser, ou deixar vazio
                 c1, c2 = st.columns(2)
                 selected_paper_cover = c1.selectbox("Papel da capa", options=[""] + sorted(paper_cover_options), key="sel_capa_papel")
                 impression_options = ["", "Offset", "Digital 4/0", "Digital 4/1", "Digital 1/0", "Digital 1/1"]
