@@ -291,8 +291,17 @@ def display_history_page():
                     st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
 
             # Botão para baixar Ordem de Protótipo (sempre disponível)
-            # ...código de geração de ordem de protótipo...
-            st.button("Baixar Ordem de Protótipo")
+            # Botão para gerar e baixar Ordem de Protótipo
+            from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+            if st.button("Gerar Ordem de Prototipo", key=f"gerar_ordem_{id_orcamento}"):
+                import tempfile
+                import os
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+                    generate_ordem_prototipo_pdf(versoes[versao_idx]["data"], tmpfile.name)
+                    tmpfile.flush()
+                    with open(tmpfile.name, "rb") as fpdf:
+                        st.download_button("Baixar Ordem de Prototipo", fpdf, file_name=f"OrdemPrototipo_{id_orcamento}.pdf")
+                    os.unlink(tmpfile.name)
 
             # Regras de botões por status
             show_editar = False
