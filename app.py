@@ -463,7 +463,7 @@ def budget_page():
                     add_button = st.form_submit_button("Adicionar Ajuste")
                     if add_button and new_ajuste_desc and new_ajuste_valor != 0:
                         st.session_state.ajustes.append({"descricao": new_ajuste_desc, "valor": new_ajuste_valor})
-                        st.experimental_rerun()
+                        st.rerun()
                 if st.session_state.ajustes:
                     st.write("**Ajustes Adicionados:**")
                     for i, ajuste in enumerate(st.session_state.ajustes):
@@ -472,7 +472,7 @@ def budget_page():
                         c2.write(f"R$ {ajuste['valor']:,.2f}")
                         if c3.button("Remover", key=f"remove_ajuste_{i}"):
                             st.session_state.ajustes.pop(i)
-                            st.experimental_rerun()
+                            st.rerun()
         
         # Detalhes dos Custos
         with st.expander("Ver detalhes do custo"):
