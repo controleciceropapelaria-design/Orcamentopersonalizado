@@ -256,10 +256,10 @@ def display_history_page():
                 st.warning("Arquivo PDF não encontrado para esta versão.")
 
         # Expander de detalhes e botões de ação por orçamento
-        with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
-            # --- INÍCIO DO BLOCO ADMIN ---
-            # Só executa o bloco admin se estiver na aba admin
-            if st.session_state.get("page") == "Painel Admin":
+        # --- INÍCIO DO BLOCO ADMIN ---
+        # Só executa o bloco admin se estiver na aba admin
+        if st.session_state.get("page") == "Painel Admin":
+            with st.expander("Ver Detalhes Completos de um Orçamento"):
                 orcamento_completo = st.session_state.df_orcamentos
                 id_orcamento_admin = st.selectbox("Selecione o ID do Orçamento", options=orcamento_completo['ID'], key="admin_orc_select")
                 if id_orcamento_admin:
@@ -482,7 +482,131 @@ def display_history_page():
                                                 file_name=os.path.basename(ordem_path),
                                                 key=f"download_ordem_{id_orcamento_admin}"
                                             )
-            # --- FIM DO BLOCO ADMIN ---
+        # --- FIM DO BLOCO ADMIN ---
+        # --- INÍCIO DO BLOCO USUÁRIO ---
+        else:
+            with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
+                id_orcamento = user_history.loc[selected_idx, 'ID']
+                orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
+                df_detalhes_usuario = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
+                for col in df_detalhes_usuario.columns:
+                    if df_detalhes_usuario[col].dtype == "object":
+                        try:
+                            df_detalhes_usuario[col] = pd.to_numeric(df_detalhes_usuario[col], errors="raise")
+                        except Exception:
+                            df_detalhes_usuario[col] = df_detalhes_usuario[col].astype(str)
+                st.dataframe(df_detalhes_usuario)
+
+                # Mostra status colorido no topo do expander
+                status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
+                if pd.isna(status):
+                    status = "Pendente"
+                status = str(status).strip().capitalize()
+                status_colors = {
+                    "Pendente": "#ff9800",
+                    "Aprovado": "#2ecc40",
+                    "Suspenso": "#ffeb3b",
+                    "Finalizado": "#e74c3c"
+                }
+                st.markdown(
+                    f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
+                    unsafe_allow_html=True
+                )
+
+                # Corrigir acesso à versão selecionada
+                versoes_json = orcamento_selecionado.get("VersoesJSON", "[]")
+                try:
+                    versoes = json.loads(versoes_json)
+                except Exception:
+                    versoes = []
+                versoes = versoes if isinstance(versoes, list) else []
+                versoes.append({"timestamp": orcamento_selecionado.get("Data", ""), "data": orcamento_selecionado.to_dict()})
+                versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
+                versao_idx = st.selectbox(
+                    "Escolha a versão:",
+                    options=list(range(len(versoes))),
+                    format_func=lambda i: versao_labels[i],
+                    key=f"versao_select_{id_orcamento}"
+                )
+                versao_data = versoes[versao_idx]["data"] if versoes and versao_idx < len(versoes) else orcamento_selecionado.to_dict()
+
+                # Botão para baixar o PDF da proposta, se existir
+                pdf_path = versao_data.get("PropostaPDF", "")
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as fpdf:
+                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento}")
+
+                # Botão para duplicar o orçamento
+                if st.button("Duplicar Orçamento", key=f"duplicate_orcamento_{id_orcamento}"):
+                    novo_id = str(pd.Timestamp.now().timestamp()).split(".")[0]
+                    novo_orcamento = orcamento_selecionado.copy()
+                    novo_orcamento["ID"] = novo_id
+                    novo_orcamento["Data"] = pd.Timestamp.now()
+                    novo_orcamento["StatusOrcamento"] = "Pendente"
+                    novo_orcamento["Usuario"] = st.session_state.username
+                    novo_orcamento["NomeOrcamentista"] = st.session_state.nome_completo
+                    novo_orcamento["VersoesJSON"] = json.dumps([{"data": novo_orcamento.to_dict()}])
+                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.append(novo_orcamento, ignore_index=True)
+                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                    st.success("Orçamento duplicado com sucesso!")
+                    st.rerun()
+
+                # Lógica para edição rápida de campos selecionados
+                with st.form("edit_quick_form"):
+                    st.write("Edição Rápida:")
+                    campos_editaveis = ["Produto", "Quantidade", "PrecoVenda", "Descricao"]
+                    valores_atualizar = {}
+                    for campo in campos_editaveis:
+                        valor_atual = versao_data.get(campo, "")
+                        novo_valor = st.text_input(f"{campo}", value=valor_atual, key=f"edit_{campo}")
+                        if novo_valor != valor_atual:
+                            valores_atualizar[campo] = novo_valor
+                    if st.form_submit_button("Salvar Alterações"):
+                        if valores_atualizar:
+                            for campo, novo_valor in valores_atualizar.items():
+                                st.session_state.df_orcamentos.loc[st.session_state.df_orcamentos["ID"] == id_orcamento, campo] = novo_valor
+                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                            storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                            st.success("Alterações salvas com sucesso!")
+                            st.rerun()
+                        else:
+                            st.info("Nenhuma alteração detectada.")
+
+                # Exibe detalhes da versão selecionada
+                st.write("### Detalhes da Versão Selecionada")
+                detalhes_json = orcamento_selecionado.get("VersoesJSON", "[]")
+                try:
+                    detalhes = json.loads(detalhes_json)
+                except Exception:
+                    detalhes = []
+                detalhes = detalhes if isinstance(detalhes, list) else []
+                if detalhes:
+                    detalhes_versao = detalhes[versao_idx] if versao_idx < len(detalhes) else detalhes[-1]
+                    df_detalhes_versao = pd.DataFrame([detalhes_versao])
+                    for col in df_detalhes_versao.columns:
+                        if df_detalhes_versao[col].dtype == "object":
+                            try:
+                                df_detalhes_versao[col] = pd.to_numeric(df_detalhes_versao[col], errors="raise")
+                            except Exception:
+                                df_detalhes_versao[col] = df_detalhes_versao[col].astype(str)
+                    st.dataframe(df_detalhes_versao)
+                else:
+                    st.info("Nenhum detalhe encontrado para esta versão.")
+
+                # Botão para excluir a versão selecionada
+                if st.button("Excluir Esta Versão", key=f"excluir_versao_{id_orcamento}"):
+                    if detalhes and versao_idx < len(detalhes):
+                        detalhes.pop(versao_idx)
+                        novo_detalhes_json = json.dumps(detalhes)
+                        st.session_state.df_orcamentos.loc[st.session_state.df_orcamentos["ID"] == id_orcamento, "VersoesJSON"] = novo_detalhes_json
+                        storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
+                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
+                        st.success("Versão excluída com sucesso!")
+                        st.rerun()
+                    else:
+                        st.warning("Versão não encontrada ou índice inválido.")
+
     else:
         st.info("Nenhum orçamento encontrado para o seu usuário.")
 
