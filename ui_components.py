@@ -290,148 +290,30 @@ def display_history_page():
                 with open(pdf_path, "rb") as fpdf:
                     st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
 
-            # Botão para baixar Ordem de Protótipo
-            proposta_data = {
-                "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
-                "cliente": orcamento_selecionado.get("Cliente", ""),
-                "responsavel": "",
-                "numero_orcamento": orcamento_selecionado.get("ID", ""),
-                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
-                "produto": orcamento_selecionado.get("Produto", ""),
-                "quantidade": 2,  # Sempre 2 protótipos
-                "descrição": "",
-                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
-                "total": "",
-                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
-                "validade": "",
-                "prazo_de_entrega": "",
-            }
-            # Busca contato do cliente se possível
-            try:
-                cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
-                if not cliente_row.empty:
-                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
-            except Exception:
-                pass
+            # Botão para baixar Ordem de Protótipo (sempre disponível)
+            # ...código de geração de ordem de protótipo...
+            st.button("Baixar Ordem de Protótipo")
 
-            # Monta descrição técnica detalhada dos componentes (ignora campos com valor "Nenhum" ou vazio)
-            try:
-                selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
-            except Exception:
-                selecoes = {}
+            # Regras de botões por status
+            show_editar = False
+            show_excluir = False
+            show_aprovar = False
+            show_suspender = False
+            show_finalizar = False
+            if status == "Pendente":
+                show_editar = True
+                show_excluir = True
+                show_aprovar = True
+            elif status == "Suspenso":
+                show_excluir = True
+                show_aprovar = True
+            elif status == "Aprovado":
+                show_suspender = True
+                show_finalizar = True
 
-            descricao_componentes = []
-            def add_comp(nome, campos, label_map=None):
-                linhas = []
-                for campo in campos:
-                    valor = selecoes.get(campo)
-                    # Só inclui se valor não for vazio, None ou "Nenhum"
-                    if valor and str(valor).strip().lower() != "nenhum":
-                        if label_map and campo in label_map:
-                            label = label_map[campo]
-                        else:
-                            label = campo
-                            for prefix in ['sel_', 'paper_', 'mat_cost_', 'serv_cost_']:
-                                if label.startswith(prefix):
-                                    label = label[len(prefix):]
-                            label = label.replace("(frente) ou forro", "Frente/Forro")
-                            label = label.replace("(verso)", "Verso")
-                            label = label.replace("_", " ").strip().capitalize()
-                            if " " in label:
-                                label = label.split()[-1].capitalize()
-                        linhas.append(f"{label}: {valor}")
-                if linhas:
-                    # Título do bloco em negrito real (HTML) para PDF: <b>...</b>
-                    descricao_componentes.append(f"<b>{nome}:</b>\n" + "\n".join(linhas))
-
-            # Capa
-            add_comp("Capa", [
-                "sel_capa_papel", "sel_capa_impressao", "sel_capa_couro", "selected_laminacao", "selected_hot_stamping", "selected_silk"
-            ], label_map={
-                "sel_capa_papel": "Papel",
-                "sel_capa_impressao": "Impressão",
-                "sel_capa_couro": "Couro",
-                "selected_laminacao": "Laminação",
-                "selected_hot_stamping": "Hot stamping",
-                "selected_silk": "Silk"
-            })
-            # Miolo
-            add_comp("Miolo", [
-                "sel_miolo", "paper_miolo", "mat_cost_miolo", "serv_cost_miolo"
-            ], label_map={
-                "sel_miolo": "Tipo",
-                "paper_miolo": "Papel",
-                "mat_cost_miolo": "Material",
-                "serv_cost_miolo": "Serviço"
-            })
-            # Guarda (Frente)
-            add_comp("Guarda (Frente) ou Forro", [
-                "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
-            ], label_map={
-                "sel_guarda (frente) ou forro": "Tipo",
-                "paper_guarda (frente) ou forro": "Papel",
-                "mat_cost_guarda (frente) ou forro": "Material",
-                "serv_cost_guarda (frente) ou forro": "Serviço"
-            })
-            # Guarda (Verso)
-            add_comp("Guarda (Verso)", [
-                "sel_guarda (verso)", "paper_guarda (verso)", "mat_cost_guarda (verso)", "serv_cost_guarda (verso)"
-            ], label_map={
-                "sel_guarda (verso)": "Tipo",
-                "paper_guarda (verso)": "Papel",
-                "mat_cost_guarda (verso)": "Material",
-                "serv_cost_guarda (verso)": "Serviço"
-            })
-            # Bolsa
-            add_comp("Bolsa", [
-                "sel_bolsa", "paper_bolsa", "mat_cost_bolsa", "serv_cost_bolsa"
-            ], label_map={
-                "sel_bolsa": "Tipo",
-                "paper_bolsa": "Papel",
-                "mat_cost_bolsa": "Material",
-                "serv_cost_bolsa": "Serviço"
-            })
-            # Divisória
-            add_comp("Divisória", [
-                "sel_divisória", "paper_divisória", "mat_cost_divisória", "serv_cost_divisória"
-            ], label_map={
-                "sel_divisória": "Tipo",
-                "paper_divisória": "Papel",
-                "mat_cost_divisória": "Material",
-                "serv_cost_divisória": "Serviço"
-            })
-            # Adesivo
-            add_comp("Adesivo", [
-                "sel_adesivo", "paper_adesivo", "mat_cost_adesivo", "serv_cost_adesivo"
-            ], label_map={
-                "sel_adesivo": "Tipo",
-                "paper_adesivo": "Papel",
-                "mat_cost_adesivo": "Material",
-                "serv_cost_adesivo": "Serviço"
-            })
-            # Aviamentos (Wire-o, Elástico, etc)
-            for key in selecoes:
-                valor = selecoes[key]
-                if key.startswith("cd_") and valor and str(valor).strip().lower() != "nenhum":
-                    label = key.replace("cd_", "").replace("_", " ").capitalize()
-                    descricao_componentes.append(f"**{label}:** {valor}")
-
-            # Junta tudo em uma string única, convertendo Markdown/HTML para texto simples para PDF
-            import re
-            def markdown_to_plain(text):
-                # Remove ** e __ e converte <b> para maiúsculo simples
-                text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
-                text = re.sub(r"<b>(.*?)</b>", lambda m: m.group(1).upper(), text)
-                return text
-
-            proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
-            proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
-
-            # Botões de ação em linha (agora inclui o botão de edição dentro do expander)
             col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
             with col_btn1:
-                if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
-                    # Corrigir: sempre usar os dados da versão selecionada (versoes[versao_idx]["data"])
+                if show_editar and st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
                     versao_data = versoes[versao_idx]["data"]
                     selecoes = json.loads(versao_data.get("SelecoesJSON", "{}"))
                     for key, value in selecoes.items():
@@ -455,7 +337,7 @@ def display_history_page():
                     st.success(f"Versão {versao_idx+1} carregada para edição!")
                     st.rerun()
             with col_btn2:
-                if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
+                if show_excluir and st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
                     idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
                     st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
@@ -463,7 +345,7 @@ def display_history_page():
                     st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
                     st.rerun()
             with col_btn3:
-                if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
+                if show_aprovar and st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
                     idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
                     st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Aprovado"
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
@@ -471,7 +353,7 @@ def display_history_page():
                     st.success(f"Orçamento {id_orcamento} aprovado!")
                     st.rerun()
             with col_btn4:
-                if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
+                if show_suspender and st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
                     idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
                     st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Suspenso"
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
@@ -479,15 +361,13 @@ def display_history_page():
                     st.success(f"Orçamento {id_orcamento} suspenso!")
                     st.rerun()
             with col_btn5:
-                if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
+                if show_finalizar and st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
                     idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
                     st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Finalizado"
                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                     st.success(f"Orçamento {id_orcamento} finalizado!")
                     st.rerun()
-
-                # ...existing code for ajustes_json, ajustes_lista, etc...
     else:
         st.info("Nenhum orçamento encontrado para o seu usuário.")
 

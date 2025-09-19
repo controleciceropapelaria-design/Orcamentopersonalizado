@@ -499,7 +499,8 @@ def budget_page():
                     or "BOLSA" in item["name"]
                     or "Divisoria" in item["name"]
                     or "ADESIVO" in item["name"]
-                    or "FORRO" in item["name"] 
+                    or "FORRO" in item["name"]
+                    or "DIVISORIA" in item["name"]
                 ):
                     comp_row = None
                     if "Miolo" in item["name"]:
@@ -550,6 +551,10 @@ def budget_page():
                         df_comp = df_guarda_forro
                         comp_col = "Item"
                         comp_nome = "Forro"
+                    elif "DIVISORIA" in item["name"]:
+                        df_comp = df_divisorias
+                        comp_col = "Divisoria"
+                        comp_nome = "Divisoria"    
                     else:
                         df_comp = None
                         comp_col = None
