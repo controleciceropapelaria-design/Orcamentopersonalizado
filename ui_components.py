@@ -720,7 +720,7 @@ def display_admin_panel():
                                 st.rerun()
                 with col3:
                     # Impede que o admin desative a si mesmo
-                    if user['status'] == 'ativo' and user['usuario'] != st.session_state.username:
+                    if user['usuario'] != st.session_state.username and user['status'] in ['ativo', 'pendente']:
                         if st.button("❌ Desativar", key=f"deactivate_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'status'] = 'inativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
