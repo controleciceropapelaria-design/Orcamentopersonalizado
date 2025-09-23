@@ -31,25 +31,25 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.cell(0, 8, f"Rio de Janeiro, {proposal_data['data']}", ln=True, align="R")
 
     pdf.set_xy(10, 55)
-    pdf.set_font("Times", "B", 12)
+    pdf.set_font("Times", "B", 10)
     pdf.cell(0, 8, "À", ln=True)
-    pdf.set_font("Times", size=12)
+    pdf.set_font("Times", size=10)
     pdf.cell(0, 8, f"{proposal_data['cliente']}", ln=True)
-    pdf.set_font("Times", "I", 11)
+    pdf.set_font("Times", "I", 10)
     pdf.cell(0, 8, f"A/C: {proposal_data['responsavel']}", ln=True)
     pdf.ln(2)
 
-    pdf.set_font("Times", size=12)
+    pdf.set_font("Times", size=10)
     pdf.multi_cell(0, 8, "Prezado(s) Senhor(es), Conforme Solicitação de V.Sra., apresentamos nossos preços para os produtos abaixo:")
     pdf.ln(2)
-    pdf.set_font("Times", "B", 12)
+    pdf.set_font("Times", "B", 10)
     pdf.cell(0, 8, f"Nº Proposta: {proposal_data['numero_orcamento']}", ln=True)
-    pdf.set_font("Times", "B", 14)
+    pdf.set_font("Times", "B", 12)
     pdf.cell(0, 10, proposal_data['produto'], ln=True, align="C")
     pdf.ln(2)
 
     # Tabela de produto
-    pdf.set_font("Times", "B", 11)
+    pdf.set_font("Times", "B", 10)
     pdf.set_fill_color(220, 220, 220)
     table_header_height = 10
 
