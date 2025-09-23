@@ -207,3 +207,9 @@ def delete_proposta_pdf_from_github(filename, token, branch="main"):
     repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
     path = f"Propostas/{filename}"
     return delete_file_from_github(repo, path, token, branch, commit_message=f"Delete proposta {filename} via Streamlit")
+
+def delete_usuario_from_github(usuario, token, branch="main"):
+    repo = "controleciceropapelaria-design/Orcamentoperosnalizado"
+    path = "data/usuarios.csv"
+    delete_file_from_github(repo, path, token, branch, commit_message=f"Delete usuarios.csv ({usuario}) via Streamlit")
+    save_usuarios_to_github(st.session_state.df_usuarios, token, branch)

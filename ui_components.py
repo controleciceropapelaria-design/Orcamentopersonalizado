@@ -469,6 +469,9 @@ def _monta_descricao_prototipo(orcamento):
                     elif 'Divisoria' in k_clean.lower():
                         if f"{subk}: {subv}" not in secoes['Divisória']:
                             secoes['Divisória'].append(f"{subk}: {subv}")
+                    elif 'Divisória' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['Divisória']:
+                            secoes['Divisória'].append(f"{subk}: {subv}")        
                     elif 'DIVISORIA' in k_clean.upper():
                         if f"{subk}: {subv}" not in secoes['Divisória']:
                             secoes['Divisória'].append(f"{subk}: {subv}")        
@@ -524,7 +527,10 @@ def _monta_descricao_prototipo(orcamento):
                         secoes['Divisória'].append(f"{k_clean}: {v}")
                 elif 'DIVISORIA' in k_clean.upper():
                     if f"{k_clean}: {v}" not in secoes['Divisória']:
-                        secoes['Divisória'].append(f"{k_clean}: {v}")      
+                        secoes['Divisória'].append(f"{k_clean}: {v}") 
+                elif 'Divisória' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['Divisória']:
+                        secoes['Divisória'].append(f"{k_clean}: {v}")             
                 elif 'adesivo' in k_clean.lower():
                     if f"{k_clean}: {v}" not in secoes['Adesivo']:
                         secoes['Adesivo'].append(f"{k_clean}: {v}")
@@ -674,7 +680,7 @@ def display_admin_panel():
             # Itera sobre cada usuário para criar um painel de gerenciamento individual
             for index, user in users_df.iterrows():
                 st.subheader(f"Usuário: {user['usuario']} ({user['nome_completo']})")
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
                     st.write(f"**Status:** {user['status']}")
@@ -721,6 +727,15 @@ def display_admin_panel():
                             storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.warning(f"Usuário {user['usuario']} desativado.")
                             st.rerun()
+                with col4:
+                    st.write(f"**Status:** {user['status']}")
+                    if user['status'] == 'ativo' and user['usuario'] != st.session_state.username:
+                        if st.button("Excluir", key=f"delete_{user['usuario']}"):
+                            st.session_state.df_usuarios = st.session_state.df_usuarios.drop(index=index).reset_index(drop=True)
+                            storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
+                            storage.delete_usuario_from_github(user['usuario'], st.secrets["github_token"])
+                            st.warning(f"Usuário {user['usuario']} excluído.")
+                            st.rerun()            
                 st.divider()
 
     # --- NOVA ABA DE GERENCIAMENTO DE CLIENTES ---
