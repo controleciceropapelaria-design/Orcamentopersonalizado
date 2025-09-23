@@ -423,8 +423,8 @@ def _monta_descricao_prototipo(orcamento):
         selecoes = {}
     descricao = []
     for k, v in selecoes.items():
-        # Remove prefixo 'cd_' do nome do campo
-        k_clean = k.replace('cd_', 'util_', 'sel','')
+        # Remove prefixos 'cd_', 'util_', 'sel' do nome do campo
+        k_clean = k.replace('cd_', '').replace('util_', '').replace('sel', '')
         if isinstance(v, dict):
             for subk, subv in v.items():
                 # Remove 'Nenhum' da descrição
