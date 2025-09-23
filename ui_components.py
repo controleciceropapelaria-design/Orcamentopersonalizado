@@ -310,17 +310,7 @@ def display_history_page():
 
             cols = st.columns(len(btns)) if btns else []
 
-            # Estilos customizados para botões
-            st.markdown("""
-            <style>
-            .btn-aprovar {background-color: #2ecc40 !important; color: #fff !important;}
-            .btn-suspender {background-color: #ffeb3b !important; color: #222 !important;}
-            .btn-finalizar {background-color: #e74c3c !important; color: #fff !important;}
-            .btn-ordem {background-color: #fff !important; color: #222 !important; border: 1px solid #ccc !important;}
-            .btn-excluir {background-color: #f44336 !important; color: #fff !important;}
-            .btn-editar {background-color: #1976d2 !important; color: #fff !important;}
-            </style>
-            """, unsafe_allow_html=True)
+            # ...estilos customizados removidos para restaurar o padrão dos botões...
 
             col_idx = 0
             for idx, btn in enumerate(btns):
