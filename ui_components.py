@@ -386,8 +386,27 @@ def display_history_page():
                                 "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
                                 "produto": orcamento_selecionado.get("Produto", ""),
                                 "quantidade": 2,
-                                # Se não houver descrição, usa o nome do produto como descrição
-                                "descrição": orcamento_selecionado.get("descrição") or orcamento_selecionado.get("Produto", ""),
+                                # Monta descrição do protótipo a partir do JSON dos itens escolhidos
+                                "descrição": None,  # será preenchido após definição da função
+def _monta_descricao_prototipo(orcamento):
+    """Gera uma descrição técnica a partir do JSON dos itens escolhidos no orçamento."""
+    import json
+    selecoes_json = orcamento.get("SelecoesJSON", "{}")
+    try:
+        selecoes = json.loads(selecoes_json)
+    except Exception:
+        selecoes = {}
+    descricao = []
+    for k, v in selecoes.items():
+        if isinstance(v, dict):
+            for subk, subv in v.items():
+                descricao.append(f"{k} - {subk}: {subv}")
+        else:
+            descricao.append(f"{k}: {v}")
+    # Se não houver nada, retorna nome do produto
+    if not descricao:
+        return orcamento.get("Produto", "")
+    return "\n".join(descricao)
                                 "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
                                 "total": "",
                                 "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
@@ -801,24 +820,30 @@ def display_admin_panel():
                                     from generate_ordem_prototipo import generate_ordem_prototipo_pdf
                                     import os
                                     from datetime import datetime
+                                    # Garante que orcamento_selecionado está definido
+                                    orcamento_selecionado = orcamento_completo[orcamento_completo['ID'] == id_orcamento_admin].iloc[0]
                                     proposta_data = {
                                         "data": datetime.now().strftime("%d/%m/%Y"),
-                                        "cliente": orcamento_selecionado_admin.get("Cliente", ""),
+                                        "cliente": orcamento_selecionado.get("Cliente", ""),
                                         "responsavel": "",
-                                        "numero_orcamento": orcamento_selecionado_admin.get("ID", ""),
-                                        "versao_orcamento": orcamento_selecionado_admin.get("VersoesOrcamento", 1),
-                                        "produto": orcamento_selecionado_admin.get("Produto", ""),
+                                        "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                                        "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                                        "produto": orcamento_selecionado.get("Produto", ""),
                                         "quantidade": 2,
-                                        "descrição": orcamento_selecionado_admin.get("descrição", ""),
-                                        "Unitario": orcamento_selecionado_admin.get("PrecoVenda", ""),
+                                        "descrição": None,  # será preenchido abaixo
+                                        "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
                                         "total": "",
-                                        "atendente": orcamento_selecionado_admin.get("NomeOrcamentista", ""),
+                                        "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
                                         "validade": "",
                                         "prazo_de_entrega": "",
                                     }
+                                    proposta_data["descrição"] = (
+                                        orcamento_selecionado.get("descrição") if orcamento_selecionado.get("descrição") not in [None, "", "nan"]
+                                        else _monta_descricao_prototipo(orcamento_selecionado)
+                                    )
                                     try:
                                         cliente_row = st.session_state.df_clientes[
-                                            st.session_state.df_clientes["Nome"] == orcamento_selecionado_admin.get("Cliente", "")
+                                            st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
                                         ]
                                         if not cliente_row.empty:
                                             proposta_data["responsavel"] = cliente_row["Contato"].values[0]
