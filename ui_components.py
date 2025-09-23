@@ -761,7 +761,7 @@ def display_admin_panel():
                                 if st.button("Editar esta versão", key=f"editar_{id_orcamento_admin}_details"):
                                     # ...existing code for editar...
                                     st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #1976d2 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão editar...
                             elif btn == "excluir":
                                 if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento_admin}_details"):
                                     idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
@@ -770,7 +770,7 @@ def display_admin_panel():
                                     storage.delete_orcamento_from_github(st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} excluído com sucesso!")
                                     st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #f44336 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão excluir...
                             elif btn == "aprovar":
                                 if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento_admin}_details"):
                                     idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
@@ -779,7 +779,7 @@ def display_admin_panel():
                                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} aprovado!")
                                     st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #2ecc40 !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão aprovar...
                             elif btn == "suspender":
                                 if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento_admin}_details"):
                                     idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
@@ -788,7 +788,7 @@ def display_admin_panel():
                                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} suspenso!")
                                     st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #ffeb3b !important; color: #222 !important;}</style>', unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão suspender...
                             elif btn == "finalizar":
                                 if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento_admin}_details"):
                                     idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
@@ -797,18 +797,9 @@ def display_admin_panel():
                                     storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} finalizado!")
                                     st.rerun()
-                                st.markdown('<style>div[data-testid="stButton"] button {background-color: #e74c3c !important; color: #fff !important;}</style>', unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão finalizar...
                             elif btn == "ordem":
-                                custom_btn_style = f"""
-                                <style>
-                                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento_admin} {{
-                                    background-color: #fff !important;
-                                    color: #222 !important;
-                                    border: 1px solid #ccc !important;
-                                }}
-                                </style>
-                                """
-                                st.markdown(custom_btn_style, unsafe_allow_html=True)
+                                # ...estilo customizado removido: botão ordem...
                                 if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento_admin}"):
                                     from generate_ordem_prototipo import generate_ordem_prototipo_pdf
                                     import os
