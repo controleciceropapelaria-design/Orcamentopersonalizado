@@ -426,9 +426,17 @@ def _monta_descricao_prototipo(orcamento):
         "Capa": [],
         "Guarda": [],
         "Miolo": [],
-        "Bola": [],
+        "Bolsa": [],
+        "Divisória": [],
+        "Adesivo": [],
         "ELASTICO": [],
         "FITA DE CETIM": [],
+        "FERRAGEM": [],
+        "ILHOS": [],
+        "PENDENTE": [],
+        "REBITE": [],
+        "SACO ADESIVADO": [],
+        "WIRE-O": [],
         "PAPELAO": [],
         "Acabamento": []
     }
@@ -439,47 +447,110 @@ def _monta_descricao_prototipo(orcamento):
     except Exception:
         selecoes = {}
 
-    # Agrupa os itens por seção
+    # Agrupa os itens por seção, mostrando todos os selecionados relevantes sem repetições
     for k, v in selecoes.items():
         k_clean = k.replace('cd_', '').replace('util_', '').replace('sel', '').strip().capitalize()
         if isinstance(v, dict):
             for subk, subv in v.items():
                 if str(subv).strip() != 'Nenhum':
-                    # Decide a seção pelo nome do campo
                     if 'capa' in k_clean.lower():
-                        secoes['Capa'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['Capa']:
+                            secoes['Capa'].append(f"{subk}: {subv}")
                     elif 'guarda' in k_clean.lower():
-                        secoes['Guarda'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['Guarda']:
+                            secoes['Guarda'].append(f"{subk}: {subv}")
                     elif 'miolo' in k_clean.lower():
-                        secoes['Miolo'].append(f"{subk}: {subv}")
-                    elif 'bola' in k_clean.lower():
-                        secoes['Bola'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['Miolo']:
+                            secoes['Miolo'].append(f"{subk}: {subv}")
+                    elif 'bolsa' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['Bolsa']:
+                            secoes['Bolsa'].append(f"{subk}: {subv}")
+                    elif 'divisoria' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['Divisória']:
+                            secoes['Divisória'].append(f"{subk}: {subv}")
+                    elif 'adesivo' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['Adesivo']:
+                            secoes['Adesivo'].append(f"{subk}: {subv}")
+                    elif 'ferragem' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['FERRAGEM']:
+                            secoes['FERRAGEM'].append(f"{subk}: {subv}")
+                    elif 'ilhos' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['ILHOS']:
+                            secoes['ILHOS'].append(f"{subk}: {subv}")
+                    elif 'pendente' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['PENDENTE']:                                        
+                            secoes['PENDENTE'].append(f"{subk}: {subv}")
+                    elif 'rebite' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['REBITE']:
+                            secoes['REBITE'].append(f"{subk}: {subv}")
+                    elif 'saco adesivado' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['SACO ADESIVADO']:                
+                            secoes['SACO ADESIVADO'].append(f"{subk}: {subv}")
+                    elif 'wire-o' in k_clean.lower():
+                        if f"{subk}: {subv}" not in secoes['WIRE-O']:
+                            secoes['WIRE-O'].append(f"{subk}: {subv}")        
                     elif 'elastico' in k_clean.lower():
-                        secoes['ELASTICO'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['ELASTICO']:
+                            secoes['ELASTICO'].append(f"{subk}: {subv}")
                     elif 'cetim' in k_clean.lower():
-                        secoes['FITA DE CETIM'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['FITA DE CETIM']:
+                            secoes['FITA DE CETIM'].append(f"{subk}: {subv}")
                     elif 'papelao' in k_clean.lower():
-                        secoes['PAPELAO'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['PAPELAO']:
+                            secoes['PAPELAO'].append(f"{subk}: {subv}")
                     elif 'acabamento' in k_clean.lower():
-                        secoes['Acabamento'].append(f"{subk}: {subv}")
+                        if f"{subk}: {subv}" not in secoes['Acabamento']:
+                            secoes['Acabamento'].append(f"{subk}: {subv}")
         else:
             if str(v).strip() != 'Nenhum':
                 if 'capa' in k_clean.lower():
-                    secoes['Capa'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['Capa']:
+                        secoes['Capa'].append(f"{k_clean}: {v}")
                 elif 'guarda' in k_clean.lower():
-                    secoes['Guarda'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['Guarda']:
+                        secoes['Guarda'].append(f"{k_clean}: {v}")
                 elif 'miolo' in k_clean.lower():
-                    secoes['Miolo'].append(f"{k_clean}: {v}")
-                elif 'bola' in k_clean.lower():
-                    secoes['Bola'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['Miolo']:
+                        secoes['Miolo'].append(f"{k_clean}: {v}")
+                elif 'bolsa' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['Bolsa']:
+                        secoes['Bolsa'].append(f"{k_clean}: {v}")
+                elif 'divisoria' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['Divisória']:
+                        secoes['Divisória'].append(f"{k_clean}: {v}")
+                elif 'adesivo' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['Adesivo']:
+                        secoes['Adesivo'].append(f"{k_clean}: {v}")
+                elif 'ferragem' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['FERRAGEM']:
+                        secoes['FERRAGEM'].append(f"{k_clean}: {v}")
+                elif 'ilhos' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['ILHOS']:
+                        secoes['ILHOS'].append(f"{k_clean}: {v}")
+                elif 'pendente' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['PENDENTE']:                                        
+                        secoes['PENDENTE'].append(f"{k_clean}: {v}")
+                elif 'rebite' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['REBITE']:
+                        secoes['REBITE'].append(f"{k_clean}: {v}")
+                elif 'saco adesivado' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['SACO ADESIVADO']:                
+                        secoes['SACO ADESIVADO'].append(f"{k_clean}: {v}")
+                elif 'wire-o' in k_clean.lower():
+                    if f"{k_clean}: {v}" not in secoes['WIRE-O']:
+                        secoes['WIRE-O'].append(f"{k_clean}: {v}")        
                 elif 'elastico' in k_clean.lower():
-                    secoes['ELASTICO'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['ELASTICO']:
+                        secoes['ELASTICO'].append(f"{k_clean}: {v}")
                 elif 'cetim' in k_clean.lower():
-                    secoes['FITA DE CETIM'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['FITA DE CETIM']:
+                        secoes['FITA DE CETIM'].append(f"{k_clean}: {v}")
                 elif 'papelao' in k_clean.lower():
-                    secoes['PAPELAO'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['PAPELAO']:
+                        secoes['PAPELAO'].append(f"{k_clean}: {v}")
                 elif 'acabamento' in k_clean.lower():
-                    secoes['Acabamento'].append(f"{k_clean}: {v}")
+                    if f"{k_clean}: {v}" not in secoes['Acabamento']:
+                        secoes['Acabamento'].append(f"{k_clean}: {v}")
 
     # Monta o texto final igual ao PDF
     descricao_final = []
