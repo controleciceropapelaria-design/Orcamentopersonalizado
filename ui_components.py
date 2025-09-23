@@ -364,16 +364,6 @@ def display_history_page():
                             st.rerun()
                         # ...estilo customizado removido: botão finalizar...
                     elif btn == "ordem":
-                        custom_btn_style = f"""
-                        <style>
-                        div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento} {{
-                            background-color: #fff !important;
-                            color: #222 !important;
-                            border: 1px solid #ccc !important;
-                        }}
-                        </style>
-                        """
-                        st.markdown(custom_btn_style, unsafe_allow_html=True)
                         if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
                             from generate_ordem_prototipo import generate_ordem_prototipo_pdf
                             import os
@@ -386,33 +376,16 @@ def display_history_page():
                                 "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
                                 "produto": orcamento_selecionado.get("Produto", ""),
                                 "quantidade": 2,
-                                # Monta descrição do protótipo a partir do JSON dos itens escolhidos
-                                "descrição": None,  # será preenchido após definição da função
-def _monta_descricao_prototipo(orcamento):
-    """Gera uma descrição técnica a partir do JSON dos itens escolhidos no orçamento."""
-    import json
-    selecoes_json = orcamento.get("SelecoesJSON", "{}")
-    try:
-        selecoes = json.loads(selecoes_json)
-    except Exception:
-        selecoes = {}
-    descricao = []
-    for k, v in selecoes.items():
-        if isinstance(v, dict):
-            for subk, subv in v.items():
-                descricao.append(f"{k} - {subk}: {subv}")
-        else:
-            descricao.append(f"{k}: {v}")
-    # Se não houver nada, retorna nome do produto
-    if not descricao:
-        return orcamento.get("Produto", "")
-    return "\n".join(descricao)
                                 "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
                                 "total": "",
                                 "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
                                 "validade": "",
                                 "prazo_de_entrega": "",
                             }
+                            proposta_data["descrição"] = (
+                                orcamento_selecionado.get("descrição") if orcamento_selecionado.get("descrição") not in [None, "", "nan"]
+                                else _monta_descricao_prototipo(orcamento_selecionado)
+                            )
                             try:
                                 cliente_row = st.session_state.df_clientes[
                                     st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
@@ -437,12 +410,35 @@ def _monta_descricao_prototipo(orcamento):
                                         file_name=os.path.basename(ordem_path),
                                         key=f"download_ordem_{id_orcamento}"
                                     )
-                col_idx += 1
+                            col_idx += 1
+
+# Função utilitária para montar descrição técnica do protótipo
+def _monta_descricao_prototipo(orcamento):
+    """Gera uma descrição técnica a partir do JSON dos itens escolhidos no orçamento."""
+    import json
+    selecoes_json = orcamento.get("SelecoesJSON", "{}")
+    try:
+        selecoes = json.loads(selecoes_json)
+    except Exception:
+        selecoes = {}
+    descricao = []
+    for k, v in selecoes.items():
+        if isinstance(v, dict):
+            for subk, subv in v.items():
+                descricao.append(f"{k} - {subk}: {subv}")
+        else:
+            descricao.append(f"{k}: {v}")
+    # Se não houver nada, retorna nome do produto
+    if not descricao:
+        return orcamento.get("Produto", "")
+    return "\n".join(descricao)
             # ...existing code for ajustes_json, ajustes_lista, etc...
-    else:
-        st.info("Nenhum orçamento encontrado para o seu usuário.")
 
 # ...existing code...
+
+# Se não houver orçamentos, exibe mensagem informativa
+    if user_history.empty:
+        st.info("Nenhum orçamento encontrado para o seu usuário.")
 
 def render_component_selector(component_type: str, df_items: pd.DataFrame, paper_options: list) -> dict:
     """
