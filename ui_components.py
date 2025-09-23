@@ -275,16 +275,8 @@ def display_history_page():
             if pd.isna(status):
                 status = "Pendente"
             status = str(status).strip().capitalize()
-            status_colors = {
-                "Pendente": "#ff9800",
-                "Aprovado": "#2ecc40",
-                "Suspenso": "#ffeb3b",
-                "Finalizado": "#e74c3c"
-            }
-            st.markdown(
-                f"<span style='color:{status_colors.get(status, '#222')};font-weight:bold;font-size:1.1em;'>Status: {status}</span>",
-                unsafe_allow_html=True
-            )
+            # Mostra status simples sem cor customizada
+            st.markdown(f"<span style='font-weight:bold;font-size:1.1em;'>Status: {status}</span>", unsafe_allow_html=True)
 
             # Botão para baixar o PDF da proposta, se existir
             pdf_path = orcamento_selecionado.get("PropostaPDF", "")
@@ -370,14 +362,7 @@ def display_history_page():
                             storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                             st.success(f"Orçamento {id_orcamento} aprovado!")
                             st.rerun()
-                        st.markdown(f"""
-                        <style>
-                        div[data-testid='stButton'] button#aprovar_{id_orcamento}_details {{
-                            background-color: #2ecc40 !important;
-                            color: #fff !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
+                        # ...estilo customizado removido: botão aprovar...
                     elif btn == "suspender":
                         if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
                             idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
