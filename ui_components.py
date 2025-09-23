@@ -322,6 +322,7 @@ def display_history_page():
             </style>
             """, unsafe_allow_html=True)
 
+            col_idx = 0
             for idx, btn in enumerate(btns):
                 with cols[idx]:
                     if btn == "editar":
