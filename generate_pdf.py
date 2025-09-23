@@ -54,10 +54,10 @@ def generate_proposal_pdf(proposal_data, output_path):
     table_header_height = 10
 
     # Novas larguras ainda menores para cabeçalhos curtos
-    w_quantidade = 18
+    w_quantidade = 15
     w_descricao = 144
     w_unitario = 18
-    w_total = 18
+    w_total = 20
 
     # Cabeçalho da tabela com nomes curtos
     pdf.cell(w_quantidade, table_header_height, "Qtd", border=1, align="C", fill=True)
