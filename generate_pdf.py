@@ -70,7 +70,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     # Linha de dados da tabela (layout ajustado e alinhado)
     pdf.set_font("Times", size=8)
     descricao_text = proposal_data['descrição']
-    cell_height = 5
+    cell_height = 4
     x = pdf.get_x()
     y = pdf.get_y()
 
