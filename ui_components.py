@@ -330,14 +330,7 @@ def display_history_page():
                             st.session_state['page'] = "Orçamento"
                             st.success(f"Versão {versao_idx+1} carregada para edição!")
                             st.rerun()
-                        st.markdown(f"""
-                        <style>
-                        div[data-testid='stButton'] button#editar_{id_orcamento}_details {{
-                            background-color: #1976d2 !important;
-                            color: #fff !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
+                        # ...estilo customizado removido: botão editar...
                     elif btn == "excluir":
                         if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
                             idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
@@ -346,14 +339,7 @@ def display_history_page():
                             storage.delete_orcamento_from_github(st.secrets["github_token"])
                             st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
                             st.rerun()
-                        st.markdown(f"""
-                        <style>
-                        div[data-testid='stButton'] button#excluir_{id_orcamento}_details {{
-                            background-color: #f44336 !important;
-                            color: #fff !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
+                        # ...estilo customizado removido: botão excluir...
                     elif btn == "aprovar":
                         if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
                             idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
@@ -371,14 +357,7 @@ def display_history_page():
                             storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                             st.success(f"Orçamento {id_orcamento} suspenso!")
                             st.rerun()
-                        st.markdown(f"""
-                        <style>
-                        div[data-testid='stButton'] button#suspender_{id_orcamento}_details {{
-                            background-color: #ffeb3b !important;
-                            color: #222 !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
+                        # ...estilo customizado removido: botão suspender...
                     elif btn == "finalizar":
                         if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
                             idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
@@ -387,14 +366,7 @@ def display_history_page():
                             storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                             st.success(f"Orçamento {id_orcamento} finalizado!")
                             st.rerun()
-                        st.markdown(f"""
-                        <style>
-                        div[data-testid='stButton'] button#finalizar_{id_orcamento}_details {{
-                            background-color: #e74c3c !important;
-                            color: #fff !important;
-                        }}
-                        </style>
-                        """, unsafe_allow_html=True)
+                        # ...estilo customizado removido: botão finalizar...
                     elif btn == "ordem":
                         custom_btn_style = f"""
                         <style>
