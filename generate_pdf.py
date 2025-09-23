@@ -66,38 +66,39 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.cell(w_total, table_header_height, "Total", border=1, align="C", fill=True)
     pdf.ln()
 
-    # Linha de dados da tabela (layout ajustado)
+
+    # Linha de dados da tabela (layout ajustado e alinhado)
     pdf.set_font("Times", size=8)
     descricao_text = proposal_data['descrição']
-
-    desc_lines = pdf.multi_cell(w_descricao, 5, descricao_text, border=0, align="L", split_only=True)
-    num_lines = len(desc_lines)
     cell_height = 5
-    altura_total = cell_height * num_lines
-
     x = pdf.get_x()
     y = pdf.get_y()
 
-    # Quantidade (negrito)
-    pdf.set_font("Times", "B", 8)
-    pdf.set_xy(x, y)
-    pdf.cell(w_quantidade, altura_total, str(proposal_data['quantidade']), border=1, align="C")
+    # Calcula altura da descrição
+    desc_lines = pdf.multi_cell(w_descricao, cell_height, descricao_text, border=0, align="L", split_only=True)
+    num_lines = len(desc_lines)
+    desc_height = cell_height * num_lines
 
-    # Descrição (normal)
-    pdf.set_font("Times", size=8)
+    # Quantidade
+    pdf.set_xy(x, y)
+    pdf.set_font("Times", "B", 8)
+    pdf.multi_cell(w_quantidade, desc_height, str(proposal_data['quantidade']), border=1, align="C")
+
+    # Descrição
     pdf.set_xy(x + w_quantidade, y)
     pdf.multi_cell(w_descricao, cell_height, descricao_text, border=1, align="L")
 
-    # Unitário (negrito) - formato brasileiro
-    pdf.set_font("Times", "B", 8)
+    # Unitário
     pdf.set_xy(x + w_quantidade + w_descricao, y)
-    pdf.cell(w_unitario, altura_total, format_brl(proposal_data['Unitario']), border=1, align="C")
+    pdf.set_font("Times", "B", 8)
+    pdf.multi_cell(w_unitario, desc_height, format_brl(proposal_data['Unitario']), border=1, align="C")
 
-    # Total (negrito) - formato brasileiro
+    # Total
     pdf.set_xy(x + w_quantidade + w_descricao + w_unitario, y)
-    pdf.cell(w_total, altura_total, format_brl(proposal_data['total']), border=1, align="C")
+    pdf.multi_cell(w_total, desc_height, format_brl(proposal_data['total']), border=1, align="C")
 
-    pdf.set_y(y + altura_total)
+    # Move para a próxima linha
+    pdf.set_y(y + desc_height)
     pdf.ln(5)
 
     # Observações e condições
