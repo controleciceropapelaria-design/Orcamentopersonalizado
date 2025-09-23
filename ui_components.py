@@ -20,174 +20,6 @@ def is_valid_email(email):
     regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(regex, email)
 
-def format_cep(cep):
-    """Formata um CEP para XXXXX-XXX, aceitando apenas dígitos."""
-    cep_digits = re.sub(r'\D', '', cep)
-    if len(cep_digits) == 8:
-        return f"{cep_digits[:5]}-{cep_digits[5:]}"
-    return cep # Retorna o original se não tiver 8 dígitos
-
-def format_cnpj(cnpj):
-    """Formata um CNPJ para XX.XXX.XXX/XXXX-XX, aceitando apenas dígitos."""
-    cnpj_digits = re.sub(r'\D', '', cnpj)
-    if len(cnpj_digits) == 14:
-        return f"{cnpj_digits[:2]}.{cnpj_digits[2:5]}.{cnpj_digits[5:8]}/{cnpj_digits[8:12]}-{cnpj_digits[12:]}"
-    return cnpj
-
-def format_telefone(telefone):
-    """Formata um telefone para (XX) XXXXX-XXXX, aceitando apenas dígitos."""
-    tel_digits = re.sub(r'\D', '', telefone)
-    if len(tel_digits) == 11:
-        return f"({tel_digits[:2]}) {tel_digits[2:7]}-{tel_digits[7:]}"
-    if len(tel_digits) == 10:
-        return f"({tel_digits[:2]}) {tel_digits[2:6]}-{tel_digits[6:]}"
-    return telefone
-
-def get_address_from_cep(cep):
-    """Busca o endereço correspondente a um CEP usando a API ViaCEP."""
-    cep_digits = re.sub(r'\D', '', cep)
-    if len(cep_digits) != 8:
-        return None, "CEP inválido. Deve conter 8 dígitos."
-    
-    try:
-        response = requests.get(f"https://viacep.com.br/ws/{cep_digits}/json/")
-        response.raise_for_status() # Lança um erro para status HTTP ruins (4xx ou 5xx)
-        data = response.json()
-        if data.get("erro"):
-            return None, "CEP não encontrado."
-        
-        return data, None # Retorna os dados do endereço e nenhuma mensagem de erro
-    except requests.exceptions.RequestException as e:
-        return None, f"Erro de conexão: {e}"
-
-# ================== COMPONENTES DE UI ==================
-
-# ... (as funções display_login_form, display_registration_form, etc., continuam aqui) ...
-def display_login_form():
-    """Renderiza o formulário de login na barra lateral."""
-    st.sidebar.title("🔐 Login")
-    with st.sidebar.form("login_form"):
-        username = st.text_input("Usuário")
-        password = st.text_input("Senha", type="password")
-        submitted = st.form_submit_button("Entrar")
-        return submitted, username, password
-
-def display_registration_form():
-    """Renderiza o formulário de cadastro de usuário."""
-    st.title("📝 Cadastro de Novo Usuário")
-    with st.form("registration_form"):
-        new_user = st.text_input("Novo Usuário")
-        new_pass = st.text_input("Nova Senha", type="password")
-        full_name = st.text_input("Nome Completo")
-        submitted = st.form_submit_button("Cadastrar")
-        return submitted, new_user, new_pass, full_name
-
-def display_sidebar_logged_in():
-    """Renderiza a barra lateral para um usuário logado."""
-    # Esta função não precisa mais existir aqui, pois a lógica foi movida para app.py
-    pass
-
-# orcamento_pro/ui_components.py
-
-def display_client_registration_form():
-    """Renderiza o formulário e a tabela de cadastro de clientes com validação e busca de CEP."""
-    st.title("📋 Cadastro de Clientes")
-
-    # Inicializa o estado da sessão para os campos de endereço se não existirem
-    if 'cep_data' not in st.session_state:
-        st.session_state.cep_data = {}
-
-    st.subheader("1. Buscar Endereço (Opcional)")
-    col1, col2 = st.columns([1, 2])
-    cep_input = col1.text_input("Digite o CEP")
-    
-    # MUDANÇA AQUI: O botão de busca agora está FORA do st.form
-    if col2.button("Buscar Endereço"):
-        address_data, error_message = get_address_from_cep(cep_input)
-        if error_message:
-            st.warning(error_message)
-            st.session_state.cep_data = {}
-        else:
-            st.session_state.cep_data = address_data
-            st.success("Endereço encontrado! Os campos abaixo foram preenchidos.")
-    
-    st.divider()
-
-    # MUDANÇA AQUI: O st.form começa DEPOIS da lógica do CEP
-    with st.form("cadastro_cliente"):
-        st.subheader("2. Preencher Dados do Cliente")
-
-        # Campos de endereço usam os valores do session_state
-        cep_data = st.session_state.cep_data
-
-        col1, col2 = st.columns(2)
-        nome = col1.text_input("Nome*")
-        razao_social = col2.text_input("Razão Social")
-        cnpj = col1.text_input("CNPJ")
-        # Use exatamente o nome da coluna do CSV, sem acento e sem espaço extra
-        inscricao_estadual = col2.text_input("Inscricao Estadual")  # <-- deve ser igual ao config.COLUNAS_CLIENTES
-
-        email = col1.text_input("Email*")
-        telefone = col2.text_input("Telefone")
-        
-        contato = st.text_input("Nome do Contato")
-
-        # Os campos de endereço agora são preenchidos com base na busca anterior
-        endereco = st.text_input("Endereço", value=cep_data.get("logradouro", ""))
-        
-        col1, col2 = st.columns([2,1])
-        cidade = col1.text_input("Cidade", value=cep_data.get("localidade", ""))
-        
-        uf_index = 0
-        if cep_data.get("uf") in UFS_BRASIL:
-            uf_index = UFS_BRASIL.index(cep_data.get("uf"))
-        uf = col2.selectbox("UF", UFS_BRASIL, index=uf_index)
-        
-        forma_pagamento = st.text_input("Forma de Pagamento")
-
-        # Este é o único botão permitido dentro de um formulário
-        submitted = st.form_submit_button("Cadastrar Cliente")
-        if submitted:
-            if not nome or not email:
-                st.error("Os campos 'Nome' e 'Email' são obrigatórios.")
-            elif not is_valid_email(email):
-                st.error("Formato de email inválido.")
-            else:
-                # Garante que o dicionário tem as chaves exatamente como em config.COLUNAS_CLIENTES
-                client_data = {
-                    "Nome": nome,
-                    "Razao Social": razao_social,
-                    "CNPJ": format_cnpj(cnpj),
-                    "Endereco": endereco,
-                    "CEP": format_cep(cep_input),
-                    "Cidade": cidade,
-                    "UF": uf,
-                    "Inscricao Estadual": inscricao_estadual,  # <-- igual ao config.COLUNAS_CLIENTES
-                    "Email": email,
-                    "Telefone": format_telefone(telefone),
-                    "Forma de Pagamento": forma_pagamento,
-                    "Contato": contato,
-                    "Status": "Ativo"
-                }
-                # Garante que as colunas estejam na ordem e nomes corretos
-                new_client_df = pd.DataFrame([client_data])[config.COLUNAS_CLIENTES]
-                st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)[config.COLUNAS_CLIENTES]
-                storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
-                storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
-                st.success(f"Cliente '{nome}' cadastrado com sucesso!")
-                st.session_state.cep_data = {} # Limpa o cache do CEP
-
-    st.divider()
-    st.write("### Clientes Cadastrados")
-    # CORREÇÃO: converte colunas object para número ou string
-    df_clientes = st.session_state.df_clientes.copy()
-    for col in df_clientes.columns:
-        if df_clientes[col].dtype == "object":
-            try:
-                df_clientes[col] = pd.to_numeric(df_clientes[col], errors="raise")
-            except Exception:
-                df_clientes[col] = df_clientes[col].astype(str)
-    st.dataframe(df_clientes, width='stretch')
 
 def display_history_page():
     st.title("📜 Meu Histórico de Orçamentos")
@@ -224,279 +56,240 @@ def display_history_page():
                 df_display[col] = pd.to_numeric(df_display[col])
             except Exception:
                 df_display[col] = df_display[col].astype(str)
-        st.dataframe(df_display, width='stretch', hide_index=True)
 
-        # NOVA SEÇÃO: Seleção de versão para editar ou baixar proposta
-        st.write("### Selecionar Versão do Orçamento")
-        selected_idx = st.selectbox(
-            "Escolha o orçamento:",
-            options=list(user_history.index),
-            format_func=lambda i: f"{user_history.loc[i, 'Produto']} - {user_history.loc[i, 'Cliente']} ({user_history.loc[i, 'Data']})"
-        )
-        versoes_json = user_history.loc[selected_idx].get("VersoesJSON", "[]")
-        try:
-            versoes = json.loads(versoes_json)
-        except Exception:
-            versoes = []
-        versoes = versoes if isinstance(versoes, list) else []
-        versoes.append({"timestamp": user_history.loc[selected_idx].get("Data", ""), "data": user_history.loc[selected_idx].to_dict()})
-        versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
-        versao_idx = st.selectbox(
-            "Escolha a versão:",
-            options=list(range(len(versoes))),
-            format_func=lambda i: versao_labels[i]
-        )
-
-        # Expander de detalhes e botões de ação por orçamento
-        with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
-            id_orcamento = user_history.loc[selected_idx, 'ID']
-            orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
-            st.write(f"**Detalhes Completos do Orçamento {id_orcamento}:**")
+        if not user_history.empty:
+            st.write("### Orçamentos Criados por Você")
+            df_display = user_history[[
+                "NomeOrcamentista", "Cliente", "Quantidade", "Produto", "Data", "PropostaPDF", "StatusOrcamento"
+            ]].copy()
+            df_display.rename(columns={
+                "NomeOrcamentista": "Orçamentista",
+                "Cliente": "Cliente",
+                "Quantidade": "Qtd.",
+                "Produto": "Produto",
+                "Data": "Data",
+                "PropostaPDF": "Proposta PDF",
+                "StatusOrcamento": "Status"
+            }, inplace=True)
             # CORREÇÃO: converte colunas object para número ou string
-            df_detalhes = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
-            for col in df_detalhes.columns:
-                if df_detalhes[col].dtype == "object":
-                    try:
-                        df_detalhes[col] = pd.to_numeric(df_detalhes[col], errors="raise")
-                    except Exception:
-                        df_detalhes[col] = df_detalhes[col].astype(str)
-            st.dataframe(df_detalhes)
-            # Status visual
-            status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
-            if pd.isna(status):
-                status = "Pendente"
-            status_colors = {
-                "Pendente": "orange",
-                "Aprovado": "green",
-                "Suspenso": "gray",
-                "Finalizado": "red"
-            }
-            st.markdown(
-                f"<span style='color:{status_colors.get(status, 'black')};font-weight:bold;'>Status: {status}</span>",
-                unsafe_allow_html=True
+            for col in df_display.columns:
+                try:
+                    df_display[col] = pd.to_numeric(df_display[col])
+                except Exception:
+                    df_display[col] = df_display[col].astype(str)
+            st.dataframe(df_display, width='stretch', hide_index=True)
+
+            # NOVA SEÇÃO: Seleção de versão para editar ou baixar proposta
+            st.write("### Selecionar Versão do Orçamento")
+            selected_idx = st.selectbox(
+                "Escolha o orçamento:",
+                options=list(user_history.index),
+                format_func=lambda i: f"{user_history.loc[i, 'Produto']} - {user_history.loc[i, 'Cliente']} ({user_history.loc[i, 'Data']})"
+            )
+            versoes_json = user_history.loc[selected_idx].get("VersoesJSON", "[]")
+            try:
+                versoes = json.loads(versoes_json)
+            except Exception:
+                versoes = []
+            versoes = versoes if isinstance(versoes, list) else []
+            versoes.append({"timestamp": user_history.loc[selected_idx].get("Data", ""), "data": user_history.loc[selected_idx].to_dict()})
+            versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
+            versao_idx = st.selectbox(
+                "Escolha a versão:",
+                options=list(range(len(versoes))),
+                format_func=lambda i: versao_labels[i]
             )
 
-            # Botão para baixar o PDF da proposta, se existir
-            pdf_path = orcamento_selecionado.get("PropostaPDF", "")
-            if pdf_path and os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as fpdf:
-                    st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
-
-            # Botão para baixar Ordem de Protótipo
-            proposta_data = {
-                "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
-                "cliente": orcamento_selecionado.get("Cliente", ""),
-                "responsavel": "",
-                "numero_orcamento": orcamento_selecionado.get("ID", ""),
-                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
-                "produto": orcamento_selecionado.get("Produto", ""),
-                "quantidade": 2,  # Sempre 2 protótipos
-                "descrição": "",
-                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
-                "total": "",
-                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
-                "validade": "",
-                "prazo_de_entrega": "",
-            }
-            # Busca contato do cliente se possível
-            try:
-                cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
-                if not cliente_row.empty:
-                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
-            except Exception:
-                pass
-
-            # Monta descrição técnica detalhada dos componentes (ignora campos com valor "Nenhum" ou vazio)
-            try:
-                selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
-            except Exception:
-                selecoes = {}
-
-            descricao_componentes = []
-            def add_comp(nome, campos, label_map=None):
-                linhas = []
-                for campo in campos:
-                    valor = selecoes.get(campo)
-                    # Só inclui se valor não for vazio, None ou "Nenhum"
-                    if valor and str(valor).strip().lower() != "nenhum":
-                        if label_map and campo in label_map:
-                            label = label_map[campo]
-                        else:
-                            label = campo
-                            for prefix in ['sel_', 'paper_', 'mat_cost_', 'serv_cost_']:
-                                if label.startswith(prefix):
-                                    label = label[len(prefix):]
-                            label = label.replace("(frente) ou forro", "Frente/Forro")
-                            label = label.replace("(verso)", "Verso")
-                            label = label.replace("_", " ").strip().capitalize()
-                            if " " in label:
-                                label = label.split()[-1].capitalize()
-                        linhas.append(f"{label}: {valor}")
-                if linhas:
-                    # Título do bloco em negrito real (HTML) para PDF: <b>...</b>
-                    descricao_componentes.append(f"<b>{nome}:</b>\n" + "\n".join(linhas))
-
-            # Capa
-            add_comp("Capa", [
-                "sel_capa_papel", "sel_capa_impressao", "sel_capa_couro", "selected_laminacao", "selected_hot_stamping", "selected_silk"
-            ], label_map={
-                "sel_capa_papel": "Papel",
-                "sel_capa_impressao": "Impressão",
-                "sel_capa_couro": "Couro",
-                "selected_laminacao": "Laminação",
-                "selected_hot_stamping": "Hot stamping",
-                "selected_silk": "Silk"
-            })
-            # Miolo
-            add_comp("Miolo", [
-                "sel_miolo", "paper_miolo", "mat_cost_miolo", "serv_cost_miolo"
-            ], label_map={
-                "sel_miolo": "Tipo",
-                "paper_miolo": "Papel",
-                "mat_cost_miolo": "Material",
-                "serv_cost_miolo": "Serviço"
-            })
-
-            # Regras de botões por status
-            show_editar = status in ["Pendente", "Suspenso"]
-            show_excluir = status in ["Pendente", "Suspenso"]
-            show_aprovar = status == "Pendente"
-            show_suspender = status == "Aprovado"
-            show_finalizar = status == "Aprovado"
-            # Guarda (Frente)
-            add_comp("Guarda (Frente) ou Forro", [
-                "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
-            ], label_map={
-                "sel_guarda (frente) ou forro": "Tipo",
-                "paper_guarda (frente) ou forro": "Papel",
-                "mat_cost_guarda (frente) ou forro": "Material",
-                "serv_cost_guarda (frente) ou forro": "Serviço"
-            })
-            # Guarda (Verso)
-            add_comp("Guarda (Verso)", [
-                "sel_guarda (verso)", "paper_guarda (verso)", "mat_cost_guarda (verso)", "serv_cost_guarda (verso)"
-            ], label_map={
-                "sel_guarda (verso)": "Tipo",
-                "paper_guarda (verso)": "Papel",
-                "mat_cost_guarda (verso)": "Material",
-                "serv_cost_guarda (verso)": "Serviço"
-            })
-            # Bolsa
-            add_comp("Bolsa", [
-                "sel_bolsa", "paper_bolsa", "mat_cost_bolsa", "serv_cost_bolsa"
-            ], label_map={
-                "sel_bolsa": "Tipo",
-                "paper_bolsa": "Papel",
-                "mat_cost_bolsa": "Material",
-                "serv_cost_bolsa": "Serviço"
-            })
-            # Divisória
-            add_comp("Divisória", [
-                "sel_divisória", "paper_divisória", "mat_cost_divisória", "serv_cost_divisória"
-            ], label_map={
-                "sel_divisória": "Tipo",
-                "paper_divisória": "Papel",
-                "mat_cost_divisória": "Material",
-                "serv_cost_divisória": "Serviço"
-            })
-            # Adesivo
-            add_comp("Adesivo", [
-                "sel_adesivo", "paper_adesivo", "mat_cost_adesivo", "serv_cost_adesivo"
-            ], label_map={
-                "sel_adesivo": "Tipo",
-                "paper_adesivo": "Papel",
-                "mat_cost_adesivo": "Material",
-                "serv_cost_adesivo": "Serviço"
-            })
-            # Aviamentos (Wire-o, Elástico, etc)
-            for key in selecoes:
-                valor = selecoes[key]
-                if key.startswith("cd_") and valor and str(valor).strip().lower() != "nenhum":
-                    label = key.replace("cd_", "").replace("_", " ").capitalize()
-                    descricao_componentes.append(f"**{label}:** {valor}")
-
-            # Junta tudo em uma string única, convertendo Markdown/HTML para texto simples para PDF
-            import re
-            def markdown_to_plain(text):
-                # Remove ** e __ e converte <b> para maiúsculo simples
-                text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
-                text = re.sub(r"<b>(.*?)</b>", lambda m: m.group(1).upper(), text)
-                return text
-
-            proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
-            proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
-
-
-            col_btn1, col_btn2, col_btn3, col_btn4, col_btn5, col_btn6 = st.columns(6)
-            with col_btn1:
-                if show_editar and st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
-                    versao_data = versoes[versao_idx]["data"]
-                    selecoes = json.loads(versao_data.get("SelecoesJSON", "{}"))
-                    for key, value in selecoes.items():
-                        st.session_state[key] = value
-                    st.session_state['selected_client'] = versao_data.get('Cliente', '')
-                    try:
-                        st.session_state['budget_quantity'] = int(versao_data.get('Quantidade', 15000))
-                    except Exception:
-                        st.session_state['budget_quantity'] = 15000
-                    st.session_state['sel_produto'] = versao_data.get('Produto', '')
-                    for extra_key in [
-                        'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                        'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                    ]:
-                        if extra_key in selecoes:
-                            st.session_state[extra_key] = selecoes[extra_key]
-                    st.session_state['ajustes'] = json.loads(versao_data.get('AjustesJSON', '[]'))
-                    st.session_state['editing_id'] = versao_data.get('ID', '')
-                    st.session_state['edit_loaded'] = True
-                    st.session_state['page'] = "Orçamento"
-                    st.success(f"Versão {versao_idx+1} carregada para edição!")
-                    st.rerun()
-            with col_btn2:
-                if show_excluir and st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
-                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                    st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx).reset_index(drop=True)
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    storage.delete_orcamento_from_github(st.secrets["github_token"])
-                    st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
-                    st.rerun()
-            with col_btn3:
-                if show_aprovar and st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
-                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Aprovado"
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                    st.success(f"Orçamento {id_orcamento} aprovado!")
-                    st.rerun()
-            with col_btn4:
-                if show_suspender and st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
-                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Suspenso"
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                    st.success(f"Orçamento {id_orcamento} suspenso!")
-                    st.rerun()
-            with col_btn5:
-                if show_finalizar and st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
-                    idx = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                    st.session_state.df_orcamentos.loc[idx, "StatusOrcamento"] = "Finalizado"
-                    storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
-                    st.success(f"Orçamento {id_orcamento} finalizado!")
-                    st.rerun()
-
-            with col_btn6:
-                # Botão branco para gerar ordem de protótipo
-                custom_btn_style = """
-                <style>
-                div[data-testid="stButton"] button#gerar_ordem_prototipo_{id_orcamento} {
-                    background-color: #fff !important;
-                    color: #222 !important;
-                    border: 1px solid #ccc !important;
+            # Expander de detalhes e botões de ação por orçamento
+            with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
+                id_orcamento = user_history.loc[selected_idx, 'ID']
+                orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
+                st.write(f"**Detalhes Completos do Orçamento {id_orcamento}:**")
+                # CORREÇÃO: converte colunas object para número ou string
+                df_detalhes = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
+                for col in df_detalhes.columns:
+                    if df_detalhes[col].dtype == "object":
+                        try:
+                            df_detalhes[col] = pd.to_numeric(df_detalhes[col], errors="raise")
+                        except Exception:
+                            df_detalhes[col] = df_detalhes[col].astype(str)
+                st.dataframe(df_detalhes)
+                # Status visual
+                status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
+                if pd.isna(status):
+                    status = "Pendente"
+                status_colors = {
+                    "Pendente": "orange",
+                    "Aprovado": "green",
+                    "Suspenso": "gray",
+                    "Finalizado": "red"
                 }
-                </style>
-                """
-                st.markdown(custom_btn_style.replace("{id_orcamento}", str(id_orcamento)), unsafe_allow_html=True)
+                st.markdown(
+                    f"<span style='color:{status_colors.get(status, 'black')};font-weight:bold;'>Status: {status}</span>",
+                    unsafe_allow_html=True
+                )
+
+                # Botão para baixar o PDF da proposta, se existir
+                pdf_path = orcamento_selecionado.get("PropostaPDF", "")
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as fpdf:
+                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
+
+                # Botão para baixar Ordem de Protótipo
+                proposta_data = {
+                    "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
+                    "cliente": orcamento_selecionado.get("Cliente", ""),
+                    "responsavel": "",
+                    "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                    "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                    "produto": orcamento_selecionado.get("Produto", ""),
+                    "quantidade": 2,  # Sempre 2 protótipos
+                    "descrição": "",
+                    "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                    "total": "",
+                    "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                    "validade": "",
+                    "prazo_de_entrega": "",
+                }
+                # Busca contato do cliente se possível
+                try:
+                    cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
+                    if not cliente_row.empty:
+                        proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                except Exception:
+                    pass
+
+                # Monta descrição técnica detalhada dos componentes (ignora campos com valor "Nenhum" ou vazio)
+                try:
+                    selecoes = json.loads(orcamento_selecionado.get("SelecoesJSON", "{}"))
+                except Exception:
+                    selecoes = {}
+
+                descricao_componentes = []
+                def add_comp(nome, campos, label_map=None):
+                    linhas = []
+                    for campo in campos:
+                        valor = selecoes.get(campo)
+                        # Só inclui se valor não for vazio, None ou "Nenhum"
+                        if valor and str(valor).strip().lower() != "nenhum":
+                            if label_map and campo in label_map:
+                                label = label_map[campo]
+                            else:
+                                label = campo
+                                for prefix in ['sel_', 'paper_', 'mat_cost_', 'serv_cost_']:
+                                    if label.startswith(prefix):
+                                        label = label[len(prefix):]
+                                label = label.replace("(frente) ou forro", "Frente/Forro")
+                                label = label.replace("(verso)", "Verso")
+                                label = label.replace("_", " ").strip().capitalize()
+                                if " " in label:
+                                    label = label.split()[-1].capitalize()
+                            linhas.append(f"{label}: {valor}")
+                    if linhas:
+                        # Título do bloco em negrito real (HTML) para PDF: <b>...</b>
+                        descricao_componentes.append(f"<b>{nome}:</b>\n" + "\n".join(linhas))
+
+                # Capa
+                add_comp("Capa", [
+                    "sel_capa_papel", "sel_capa_impressao", "sel_capa_couro", "selected_laminacao", "selected_hot_stamping", "selected_silk"
+                ], label_map={
+                    "sel_capa_papel": "Papel",
+                    "sel_capa_impressao": "Impressão",
+                    "sel_capa_couro": "Couro",
+                    "selected_laminacao": "Laminação",
+                    "selected_hot_stamping": "Hot stamping",
+                    "selected_silk": "Silk"
+                })
+                # Miolo
+                add_comp("Miolo", [
+                    "sel_miolo", "paper_miolo", "mat_cost_miolo", "serv_cost_miolo"
+                ], label_map={
+                    "sel_miolo": "Tipo",
+                    "paper_miolo": "Papel",
+                    "mat_cost_miolo": "Material",
+                    "serv_cost_miolo": "Serviço"
+                })
+
+                # Regras de botões por status
+                show_editar = status in ["Pendente", "Suspenso"]
+                show_excluir = status in ["Pendente", "Suspenso"]
+                show_aprovar = status == "Pendente"
+                show_suspender = status == "Aprovado"
+                show_finalizar = status == "Aprovado"
+                # Guarda (Frente)
+                add_comp("Guarda (Frente) ou Forro", [
+                    "sel_guarda (frente) ou forro", "paper_guarda (frente) ou forro", "mat_cost_guarda (frente) ou forro", "serv_cost_guarda (frente) ou forro"
+                ], label_map={
+                    "sel_guarda (frente) ou forro": "Tipo",
+                    "paper_guarda (frente) ou forro": "Papel",
+                    "mat_cost_guarda (frente) ou forro": "Material",
+                    "serv_cost_guarda (frente) ou forro": "Serviço"
+                })
+                # Guarda (Verso)
+                add_comp("Guarda (Verso)", [
+                    "sel_guarda (verso)", "paper_guarda (verso)", "mat_cost_guarda (verso)", "serv_cost_guarda (verso)"
+                ], label_map={
+                    "sel_guarda (verso)": "Tipo",
+                    "paper_guarda (verso)": "Papel",
+                    "mat_cost_guarda (verso)": "Material",
+                    "serv_cost_guarda (verso)": "Serviço"
+                })
+                # Bolsa
+                add_comp("Bolsa", [
+                    "sel_bolsa", "paper_bolsa", "mat_cost_bolsa", "serv_cost_bolsa"
+                ], label_map={
+                    "sel_bolsa": "Tipo",
+                    "paper_bolsa": "Papel",
+                    "mat_cost_bolsa": "Material",
+                    "serv_cost_bolsa": "Serviço"
+                })
+                # Divisória
+                add_comp("Divisória", [
+                    "sel_divisória", "paper_divisória", "mat_cost_divisória", "serv_cost_divisória"
+                ], label_map={
+                    "sel_divisória": "Tipo",
+                    "paper_divisória": "Papel",
+                    "mat_cost_divisória": "Material",
+                    "serv_cost_divisória": "Serviço"
+                })
+                # Adesivo
+                add_comp("Adesivo", [
+                    "sel_adesivo", "paper_adesivo", "mat_cost_adesivo", "serv_cost_adesivo"
+                ], label_map={
+                    "sel_adesivo": "Tipo",
+                    "paper_adesivo": "Papel",
+                    "mat_cost_adesivo": "Material",
+                    "serv_cost_adesivo": "Serviço"
+                })
+
+                # Aviamentos (Wire-o, Elástico, etc)
+                for key in selecoes:
+                    valor = selecoes[key]
+                    if key.startswith("cd_") and valor and str(valor).strip().lower() != "nenhum":
+                        label = key.replace("cd_", "").replace("_", " ").capitalize()
+                        descricao_componentes.append(f"**{label}:** {valor}")
+
+                # Junta tudo em uma string única, convertendo Markdown/HTML para texto simples para PDF
+                import re
+                def markdown_to_plain(text):
+                    # Remove ** e __ e converte <b> para maiúsculo simples
+                    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+                    text = re.sub(r"<b>(.*?)</b>", lambda m: m.group(1).upper(), text)
+                    return text
+
+                proposta_descricao = "\n\n".join(descricao_componentes) if descricao_componentes else "Ver detalhes do orçamento."
+                proposta_data["descrição"] = markdown_to_plain(proposta_descricao)
+
+                # Botão sempre visível fora das colunas
+                st.markdown("""
+                    <style>
+                    div[data-testid='stButton'] button#gerar_ordem_prototipo_{id_orcamento} {
+                        background-color: #fff !important;
+                        color: #222 !important;
+                        border: 1px solid #ccc !important;
+                    }
+                    </style>
+                """.replace("{id_orcamento}", str(id_orcamento)), unsafe_allow_html=True)
                 if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
                     from generate_ordem_prototipo import generate_ordem_prototipo_pdf
                     import os
@@ -536,50 +329,8 @@ def display_history_page():
                         with open(ordem_path, "rb") as fpdf:
                             st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path), key=f"download_ordem_{id_orcamento}")
 
-                # ...existing code for ajustes_json, ajustes_lista, etc...
-    else:
-        st.info("Nenhum orçamento encontrado para o seu usuário.")
-
-# ...existing code...
-
-def render_component_selector(component_type: str, df_items: pd.DataFrame, paper_options: list) -> dict:
-    """
-    Renderiza um seletor genérico para componentes.
-    A seção 'Personalizado' agora inicia os campos numéricos com 0.00.
-    """
-    st.markdown(f"#### {component_type}")
-    item_col_name = df_items.columns[0]
-    item_list = sorted(df_items[item_col_name].dropna().unique())
-    options = ["Nenhum", "Personalizado"] + item_list
-
-    selected_item = st.selectbox(f"Selecione o {component_type}:", options, key=f"sel_{component_type.lower()}")
-
-    result = {"selection": selected_item}
-    if selected_item == "Personalizado":
-        st.write("Detalhes do Custo Personalizado:")
-        col1, col2 = st.columns(2)
-        
-        result["paper"] = col1.selectbox(
-            f"Matéria Prima Principal", paper_options, key=f"paper_{component_type.lower()}"
-        )
-        # --- MUDANÇA AQUI ---
-        result["total_material_cost"] = col1.number_input(
-            f"Custo TOTAL da Matéria Prima (R$)", 
-            min_value=0.0, 
-            value=0.0,  # Inicia com 0.0
-            format="%.2f", # Formata para 2 casas decimais
-            key=f"mat_cost_{component_type.lower()}"
-        )
-        # --- MUDANÇA AQUI ---
-        result["total_service_cost"] = col2.number_input(
-            f"Custo TOTAL do Serviço (R$)", 
-            min_value=0.0, 
-            value=0.0,  # Inicia com 0.0
-            format="%.2f", # Formata para 2 casas decimais
-            key=f"serv_cost_{component_type.lower()}"
-        )
-        
-    return result
+        else:
+            st.info("Nenhum orçamento encontrado para o seu usuário.")
 
 def render_direct_purchase_selector(category: str, items: list, wireo_map: dict) -> dict:
     """
