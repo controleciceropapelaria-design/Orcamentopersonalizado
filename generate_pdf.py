@@ -27,7 +27,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.set_font("Times", size=10)
     pdf.set_text_color(0, 0, 0)
     pdf.set_xy(10, 45)
-    pdf.ln(8)
+    pdf.ln(4)
     pdf.cell(0, 8, f"Rio de Janeiro, {proposal_data['data']}", ln=True, align="R")
 
     pdf.set_xy(10, 55)
@@ -99,7 +99,7 @@ def generate_proposal_pdf(proposal_data, output_path):
 
     # Move para a próxima linha
     pdf.set_y(y + desc_height)
-    pdf.ln(5)
+    pdf.ln(3)
 
     # Observações e condições
     pdf.set_font("Times", size=10)
@@ -109,12 +109,12 @@ def generate_proposal_pdf(proposal_data, output_path):
         "Neste caso, enviaremos uma pré nota para aprovação dos impostos antes de realizar o faturamento e expedir a produção. "
         "Como isso poderá impactar no prazo de entrega, pedimos que aprove tão logo receber a pré nota. Após aprovada é de inteira responsabilidade do cliente as informações que constam na mesma, ou seja, uma vez aprovada qualquer alteração posterior que tenha ou não dados financeiros será de responsabilidade do cliente. IPI NÃO INCLUSO."
     )
-    pdf.ln(5)
+    pdf.ln(3)
     pdf.multi_cell(0, 6,
         "FRETE grátis para as cidades de Rio de Janeiro, São Paulo e Belo Horizonte. Demais destinos o frete não está incluso e será somado à Nota Fiscal, sobre o valor total do orçamento. "
         "As propostas acima não estão assegurando a disponibilidade de matéria-prima. Antes de aprovar o orçamento, assegure-se com o nosso comercial de que as cores e o modelo que você deseja possuem disponibilidade para suprir a sua demanda dentro do prazo desejado."
     )
-    pdf.ln(15)  # Espaço extra entre os blocos
+    pdf.ln(10)  # Espaço extra entre os blocos
 
     pdf.set_font("Times", "B", 10)
     pdf.cell(0, 6, f"Contato: {proposal_data['atendente']}", ln=True)
@@ -124,7 +124,7 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.cell(0, 6, f"Prazo de Entrega: {proposal_data['prazo_de_entrega']}", ln=True)
 
     # Bloco de condições do orçamento (negrito)
-    pdf.ln(15)
+    pdf.ln(10)
     pdf.set_font("Times", "B", 10)
     pdf.cell(0, 6, "Condições do Orçamento:", ln=True)
     condicoes = (
