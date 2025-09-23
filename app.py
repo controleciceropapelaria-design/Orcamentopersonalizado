@@ -463,8 +463,6 @@ def budget_page():
                     add_button = st.form_submit_button("Adicionar Ajuste")
                     if add_button and new_ajuste_desc and new_ajuste_valor != 0:
                         st.session_state.ajustes.append({"descricao": new_ajuste_desc, "valor": new_ajuste_valor})
-                        st.session_state.ajuste_rerun = True
-                        st.experimental_rerun()
                 if st.session_state.ajustes:
                     st.write("**Ajustes Adicionados:**")
                     for i, ajuste in enumerate(st.session_state.ajustes):
@@ -473,8 +471,6 @@ def budget_page():
                         c2.write(f"R$ {ajuste['valor']:,.2f}")
                         if c3.button("Remover", key=f"remove_ajuste_{i}"):
                             st.session_state.ajustes.pop(i)
-                            st.session_state.ajuste_rerun = True
-                            st.experimental_rerun()
         
         # Detalhes dos Custos
         with st.expander("Ver detalhes do custo"):
@@ -668,6 +664,9 @@ def budget_page():
         preco_venda = custo_com_comissao * markup
         st.metric("Custo Final (Ajustado + Comissões)", f"R$ {custo_com_comissao:,.2f}".replace('.', ','))
         st.metric("Preço de Venda Unitário Sugerido", f"R$ {preco_venda:,.2f}".replace('.', ','))
+         # ADICIONADO: Campo de Observações
+        observacoes = st.text_area("Observações para a Proposta e Protótipo:", height=150)
+        
         st.divider()
         
         from generate_pdf import generate_proposal_pdf
@@ -761,6 +760,7 @@ def budget_page():
                     "atendente": st.session_state.full_name,
                     "validade": validade_orcamento,
                     "prazo_de_entrega": prazo_entrega,
+                    "observacoes": observacoes # ADICIONADO: Incluindo as observações
                 }
 
                 # Define o diretório de propostas
