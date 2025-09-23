@@ -18,16 +18,16 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Logo
+    # Logo (ajustada para mais perto do topo)
     logo_path = "logo_cicero.png"
     if logo_path:
-        pdf.image(logo_path, x=80, y=20, w=60)
+        pdf.image(logo_path, x=80, y=8, w=60)
 
     # Cabeçalho
     pdf.set_font("Times", size=10)
     pdf.set_text_color(0, 0, 0)
     pdf.set_xy(10, 45)
-    pdf.ln(4)
+    pdf.ln(6)
     pdf.cell(0, 8, f"Rio de Janeiro, {proposal_data['data']}", ln=True, align="R")
 
     pdf.set_xy(10, 55)
