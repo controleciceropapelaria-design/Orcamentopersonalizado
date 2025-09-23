@@ -423,11 +423,16 @@ def _monta_descricao_prototipo(orcamento):
         selecoes = {}
     descricao = []
     for k, v in selecoes.items():
+        # Remove prefixo 'cd_' do nome do campo
+        k_clean = k.replace('cd_', 'util_', 'sel','')
         if isinstance(v, dict):
             for subk, subv in v.items():
-                descricao.append(f"{k} - {subk}: {subv}")
+                # Remove 'Nenhum' da descrição
+                if str(subv).strip() != 'Nenhum':
+                    descricao.append(f"{k_clean} - {subk}: {subv}")
         else:
-            descricao.append(f"{k}: {v}")
+            if str(v).strip() != 'Nenhum':
+                descricao.append(f"{k_clean}: {v}")
     # Se não houver nada, retorna nome do produto
     if not descricao:
         return orcamento.get("Produto", "")
