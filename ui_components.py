@@ -428,6 +428,7 @@ def _monta_descricao_prototipo(orcamento):
         "Miolo": [],
         "Bolsa": [],
         "Divisória": [],
+        "DIVISORIA": [],
         "Adesivo": [],
         "ELASTICO": [],
         "FITA DE CETIM": [],
@@ -465,9 +466,12 @@ def _monta_descricao_prototipo(orcamento):
                     elif 'bolsa' in k_clean.lower():
                         if f"{subk}: {subv}" not in secoes['Bolsa']:
                             secoes['Bolsa'].append(f"{subk}: {subv}")
-                    elif 'divisoria' in k_clean.lower():
+                    elif 'Divisoria' in k_clean.lower():
                         if f"{subk}: {subv}" not in secoes['Divisória']:
                             secoes['Divisória'].append(f"{subk}: {subv}")
+                    elif 'DIVISORIA' in k_clean.upper():
+                        if f"{subk}: {subv}" not in secoes['Divisória']:
+                            secoes['Divisória'].append(f"{subk}: {subv}")        
                     elif 'adesivo' in k_clean.lower():
                         if f"{subk}: {subv}" not in secoes['Adesivo']:
                             secoes['Adesivo'].append(f"{subk}: {subv}")
@@ -515,9 +519,12 @@ def _monta_descricao_prototipo(orcamento):
                 elif 'bolsa' in k_clean.lower():
                     if f"{k_clean}: {v}" not in secoes['Bolsa']:
                         secoes['Bolsa'].append(f"{k_clean}: {v}")
-                elif 'divisoria' in k_clean.lower():
+                elif 'Divisoria' in k_clean.lower():
                     if f"{k_clean}: {v}" not in secoes['Divisória']:
                         secoes['Divisória'].append(f"{k_clean}: {v}")
+                elif 'DIVISORIA' in k_clean.upper():
+                    if f"{k_clean}: {v}" not in secoes['Divisória']:
+                        secoes['Divisória'].append(f"{k_clean}: {v}")      
                 elif 'adesivo' in k_clean.lower():
                     if f"{k_clean}: {v}" not in secoes['Adesivo']:
                         secoes['Adesivo'].append(f"{k_clean}: {v}")
