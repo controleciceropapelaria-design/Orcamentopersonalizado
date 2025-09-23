@@ -720,7 +720,7 @@ def display_admin_panel():
                                 st.rerun()
                 with col3:
                     # Impede que o admin desative a si mesmo
-                    if user['status'] == ['ativo','pendente'] and user['usuario'] != st.session_state.username:
+                    if user['status'] == 'ativo' and user['usuario'] != st.session_state.username:
                         if st.button("❌ Desativar", key=f"deactivate_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'status'] = 'inativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
@@ -729,7 +729,7 @@ def display_admin_panel():
                             st.rerun()
                 with col4:
                     st.write(f"**Status:** {user['status']}")
-                    if user['status'] == 'ativo' and user['usuario'] != st.session_state.username:
+                    if user['status'] in ['ativo','pendente'] and user['usuario'] != st.session_state.username:
                         if st.button("Excluir", key=f"delete_{user['usuario']}"):
                             st.session_state.df_usuarios = st.session_state.df_usuarios.drop(index=index).reset_index(drop=True)
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
