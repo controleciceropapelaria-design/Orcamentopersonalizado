@@ -781,9 +781,12 @@ def display_admin_panel():
                     import math
                     if pdf_path is None or (isinstance(pdf_path, float) and math.isnan(pdf_path)):
                         pdf_path = ""
-                    if isinstance(pdf_path, str) and pdf_path and os.path.exists(pdf_path):
-                        with open(pdf_path, "rb") as fpdf:
-                            st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
+                    try:
+                        if isinstance(pdf_path, str) and pdf_path and os.path.exists(pdf_path):
+                            with open(pdf_path, "rb") as fpdf:
+                                st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
+                    except Exception:
+                        pass
 
                     # Regras de exibição dos botões
                     # Pendente: Baixar, Editar, Excluir, Aprovar
