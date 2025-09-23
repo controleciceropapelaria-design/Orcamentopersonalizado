@@ -99,7 +99,7 @@ def generate_proposal_pdf(proposal_data, output_path):
 
     # Move para a próxima linha
     pdf.set_y(y + desc_height)
-    pdf.ln(3)
+    pdf.ln(2)
 
     # Observações e condições
     pdf.set_font("Times", size=10)
