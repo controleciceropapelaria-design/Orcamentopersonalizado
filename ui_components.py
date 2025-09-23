@@ -776,7 +776,10 @@ def display_admin_panel():
                     )
 
                     # Botão para baixar o PDF da proposta, se existir
-                    pdf_path = orcamento_selecionado_admin.get("PropostaPDF") or ""
+                    pdf_path = orcamento_selecionado_admin.get("PropostaPDF")
+                    # Garante que pdf_path é string e não NaN/None
+                    if not isinstance(pdf_path, str):
+                        pdf_path = ""
                     if pdf_path and os.path.exists(pdf_path):
                         with open(pdf_path, "rb") as fpdf:
                             st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento_admin}")
