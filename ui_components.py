@@ -15,182 +15,162 @@ import json # <-- Importamos a nova biblioteca
 
 UFS_BRASIL = ["", "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"]
 
+
 def is_valid_email(email):
     """Verifica se um email tem um formato básico válido."""
     regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(regex, email)
 
-def format_cep(cep):
-    """Formata um CEP para XXXXX-XXX, aceitando apenas dígitos."""
-    cep_digits = re.sub(r'\D', '', cep)
-    if len(cep_digits) == 8:
-        return f"{cep_digits[:5]}-{cep_digits[5:]}"
-    return cep # Retorna o original se não tiver 8 dígitos
-
-def format_cnpj(cnpj):
-    """Formata um CNPJ para XX.XXX.XXX/XXXX-XX, aceitando apenas dígitos."""
-    cnpj_digits = re.sub(r'\D', '', cnpj)
-    if len(cnpj_digits) == 14:
-        return f"{cnpj_digits[:2]}.{cnpj_digits[2:5]}.{cnpj_digits[5:8]}/{cnpj_digits[8:12]}-{cnpj_digits[12:]}"
-    return cnpj
-
-def format_telefone(telefone):
-    """Formata um telefone para (XX) XXXXX-XXXX, aceitando apenas dígitos."""
-    tel_digits = re.sub(r'\D', '', telefone)
-    if len(tel_digits) == 11:
-        return f"({tel_digits[:2]}) {tel_digits[2:7]}-{tel_digits[7:]}"
-    if len(tel_digits) == 10:
-        return f"({tel_digits[:2]}) {tel_digits[2:6]}-{tel_digits[6:]}"
-    return telefone
-
-def get_address_from_cep(cep):
-    """Busca o endereço correspondente a um CEP usando a API ViaCEP."""
-    cep_digits = re.sub(r'\D', '', cep)
-    if len(cep_digits) != 8:
-        return None, "CEP inválido. Deve conter 8 dígitos."
-    
-    try:
-        response = requests.get(f"https://viacep.com.br/ws/{cep_digits}/json/")
-        response.raise_for_status() # Lança um erro para status HTTP ruins (4xx ou 5xx)
-        data = response.json()
-        if data.get("erro"):
-            return None, "CEP não encontrado."
-        
-        return data, None # Retorna os dados do endereço e nenhuma mensagem de erro
-    except requests.exceptions.RequestException as e:
-        return None, f"Erro de conexão: {e}"
-
-# ================== COMPONENTES DE UI ==================
-
-# ... (as funções display_login_form, display_registration_form, etc., continuam aqui) ...
 def display_login_form():
-    """Renderiza o formulário de login na barra lateral."""
-    st.sidebar.title("🔐 Login")
-    with st.sidebar.form("login_form"):
+    """Exibe o formulário de login e retorna submitted, username, password."""
+    with st.form("login_form"):
         username = st.text_input("Usuário")
         password = st.text_input("Senha", type="password")
         submitted = st.form_submit_button("Entrar")
-        return submitted, username, password
-
-def display_registration_form():
-    """Renderiza o formulário de cadastro de usuário."""
-    st.title("📝 Cadastro de Novo Usuário")
-    with st.form("registration_form"):
-        new_user = st.text_input("Novo Usuário")
-        new_pass = st.text_input("Nova Senha", type="password")
-        full_name = st.text_input("Nome Completo")
-        submitted = st.form_submit_button("Cadastrar")
-        return submitted, new_user, new_pass, full_name
-
-def display_sidebar_logged_in():
-    """Renderiza a barra lateral para um usuário logado."""
-    # Esta função não precisa mais existir aqui, pois a lógica foi movida para app.py
-    pass
-
-# orcamento_pro/ui_components.py
-
-def display_client_registration_form():
-    """Renderiza o formulário e a tabela de cadastro de clientes com validação e busca de CEP."""
-    st.title("📋 Cadastro de Clientes")
-
-    # Inicializa o estado da sessão para os campos de endereço se não existirem
-    if 'cep_data' not in st.session_state:
-        st.session_state.cep_data = {}
-
-    st.subheader("1. Buscar Endereço (Opcional)")
-    col1, col2 = st.columns([1, 2])
-    cep_input = col1.text_input("Digite o CEP")
-    
-    # MUDANÇA AQUI: O botão de busca agora está FORA do st.form
-    if col2.button("Buscar Endereço"):
-        address_data, error_message = get_address_from_cep(cep_input)
-        if error_message:
-            st.warning(error_message)
-            st.session_state.cep_data = {}
-        else:
-            st.session_state.cep_data = address_data
-            st.success("Endereço encontrado! Os campos abaixo foram preenchidos.")
-    
-    st.divider()
-
-    # MUDANÇA AQUI: O st.form começa DEPOIS da lógica do CEP
-    with st.form("cadastro_cliente"):
-        st.subheader("2. Preencher Dados do Cliente")
-
-        # Campos de endereço usam os valores do session_state
-        cep_data = st.session_state.cep_data
-
-        col1, col2 = st.columns(2)
-        nome = col1.text_input("Nome*")
-        razao_social = col2.text_input("Razão Social")
-        cnpj = col1.text_input("CNPJ")
-        # Use exatamente o nome da coluna do CSV, sem acento e sem espaço extra
-        inscricao_estadual = col2.text_input("Inscricao Estadual")  # <-- deve ser igual ao config.COLUNAS_CLIENTES
-
-        email = col1.text_input("Email*")
-        telefone = col2.text_input("Telefone")
-        
-        contato = st.text_input("Nome do Contato")
-
-        # Os campos de endereço agora são preenchidos com base na busca anterior
-        endereco = st.text_input("Endereço", value=cep_data.get("logradouro", ""))
-        
-        col1, col2 = st.columns([2,1])
-        cidade = col1.text_input("Cidade", value=cep_data.get("localidade", ""))
-        
-        uf_index = 0
-        if cep_data.get("uf") in UFS_BRASIL:
-            uf_index = UFS_BRASIL.index(cep_data.get("uf"))
-        uf = col2.selectbox("UF", UFS_BRASIL, index=uf_index)
-        
-        forma_pagamento = st.text_input("Forma de Pagamento")
-
-        # Este é o único botão permitido dentro de um formulário
-        submitted = st.form_submit_button("Cadastrar Cliente")
-        if submitted:
-            if not nome or not email:
-                st.error("Os campos 'Nome' e 'Email' são obrigatórios.")
-            elif not is_valid_email(email):
-                st.error("Formato de email inválido.")
-            else:
-                # Garante que o dicionário tem as chaves exatamente como em config.COLUNAS_CLIENTES
-                client_data = {
-                    "Nome": nome,
-                    "Razao Social": razao_social,
-                    "CNPJ": format_cnpj(cnpj),
-                    "Endereco": endereco,
-                    "CEP": format_cep(cep_input),
-                    "Cidade": cidade,
-                    "UF": uf,
-                    "Inscricao Estadual": inscricao_estadual,  # <-- igual ao config.COLUNAS_CLIENTES
-                    "Email": email,
-                    "Telefone": format_telefone(telefone),
-                    "Forma de Pagamento": forma_pagamento,
-                    "Contato": contato,
-                    "Status": "Ativo"
-                }
-                # Garante que as colunas estejam na ordem e nomes corretos
-                new_client_df = pd.DataFrame([client_data])[config.COLUNAS_CLIENTES]
-                st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)[config.COLUNAS_CLIENTES]
-                storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
-                storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
-                st.success(f"Cliente '{nome}' cadastrado com sucesso!")
-                st.session_state.cep_data = {} # Limpa o cache do CEP
-
-    st.divider()
-    st.write("### Clientes Cadastrados")
-    # CORREÇÃO: converte colunas object para número ou string
-    df_clientes = st.session_state.df_clientes.copy()
-    for col in df_clientes.columns:
-        if df_clientes[col].dtype == "object":
-            try:
-                df_clientes[col] = pd.to_numeric(df_clientes[col], errors="raise")
-            except Exception:
-                df_clientes[col] = df_clientes[col].astype(str)
-    st.dataframe(df_clientes, width='stretch')
+    return submitted, username, password
 
 def display_history_page():
-    # Botão para gerar ordem de protótipo (este bloco parece estar duplicado e mal posicionado, pode ser removido se não for usado)
+    st.title("📜 Meu Histórico de Orçamentos")
+    import os
+    from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+    from datetime import datetime
+
+    user_history = st.session_state.df_orcamentos[
+        st.session_state.df_orcamentos["Usuario"] == st.session_state.username
+    ].copy()
+
+    # Garante que a coluna existe e preenche NaN com "Pendente"
+    if "StatusOrcamento" not in user_history.columns:
+        user_history["StatusOrcamento"] = "Pendente"
+    user_history["StatusOrcamento"] = user_history["StatusOrcamento"].fillna("Pendente")
+
+    if not user_history.empty:
+        st.write("### Orçamentos Criados por Você")
+        df_display = user_history[[
+            "NomeOrcamentista", "Cliente", "Quantidade", "Produto", "Data", "PropostaPDF", "StatusOrcamento"
+        ]].copy()
+        df_display.rename(columns={
+            "NomeOrcamentista": "Orçamentista",
+            "Cliente": "Cliente",
+            "Quantidade": "Qtd.",
+            "Produto": "Produto",
+            "Data": "Data",
+            "PropostaPDF": "Proposta PDF",
+            "StatusOrcamento": "Status"
+        }, inplace=True)
+        # CORREÇÃO: converte colunas object para número ou string
+        for col in df_display.columns:
+            try:
+                df_display[col] = pd.to_numeric(df_display[col])
+            except Exception:
+                df_display[col] = df_display[col].astype(str)
+        st.dataframe(df_display, width='stretch', hide_index=True)
+        # ...existing code...
+
+        # NOVA SEÇÃO: Seleção de versão para editar ou baixar proposta
+        st.write("### Selecionar Versão do Orçamento")
+        selected_idx = st.selectbox(
+            "Escolha o orçamento:",
+            options=list(user_history.index), format_func=lambda i: f"{user_history.loc[i, 'Produto']} - {user_history.loc[i, 'Cliente']} ({user_history.loc[i, 'Data']})")
+        versoes_json = user_history.loc[selected_idx].get("VersoesJSON", "[]")
+        try:
+            versoes = json.loads(versoes_json)
+        except Exception:
+            versoes = []
+        versoes = versoes if isinstance(versoes, list) else []
+        versoes.append({"timestamp": user_history.loc[selected_idx].get("Data", ""), "data": user_history.loc[selected_idx].to_dict()})
+        versao_labels = [f"Versão {i+1} - {v['timestamp']}" for i, v in enumerate(versoes)]
+        versao_idx = st.selectbox("Escolha a versão:", options=list(range(len(versoes))), format_func=lambda i: versao_labels[i])
+        col_edit, col_download = st.columns(2)
+        if col_edit.button("Editar esta versão"):
+            selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
+            for key, value in selecoes.items():
+                st.session_state[key] = value
+            st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
+            st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
+            st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
+            st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
+            st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
+            st.session_state['edit_loaded'] = True
+            st.success(f"Versão {versao_idx+1} carregada para edição!")
+            st.rerun()
+        if col_download.button("Baixar Proposta PDF desta versão"):
+            pdf_path = versoes[versao_idx]["data"].get("PropostaPDF", "")
+            if pdf_path and os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as fpdf:
+                    st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
+            else:
+                st.warning("Arquivo PDF não encontrado para esta versão.")
+
+        with st.expander("Ver Todos os Detalhes e Ajustes de um Orçamento"):
+            for idx, id_orcamento in enumerate(user_history['ID']):
+                orcamento_selecionado = user_history[user_history['ID'] == id_orcamento].iloc[0]
+                st.write(f"**Detalhes Completos do Orçamento {id_orcamento}:**")
+                # CORREÇÃO: converte colunas object para número ou string
+                df_detalhes = orcamento_selecionado.drop('AjustesJSON').to_frame().T.copy()
+                for col in df_detalhes.columns:
+                    if df_detalhes[col].dtype == "object":
+                        try:
+                            df_detalhes[col] = pd.to_numeric(df_detalhes[col], errors="raise")
+                        except Exception:
+                            df_detalhes[col] = df_detalhes[col].astype(str)
+                st.dataframe(df_detalhes)
+                # Status visual
+                status = orcamento_selecionado.get('StatusOrcamento', 'Pendente')
+                if pd.isna(status):
+                    status = "Pendente"
+                status_colors = {
+                    "Pendente": "orange",
+                    "Aprovado": "green",
+                    "Suspenso": "gray",
+                    "Finalizado": "red"
+                }
+                st.markdown(
+                    f"<span style='color:{status_colors.get(status, 'black')};font-weight:bold;'>Status: {status}</span>",
+                    unsafe_allow_html=True
+                )
+
+                # Botão para baixar o PDF da proposta, se existir
+                pdf_path = orcamento_selecionado.get("PropostaPDF", "")
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as fpdf:
+                        st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path))
+
+                # Botão para baixar Ordem de Protótipo
+                proposta_data = {
+                    "data": datetime.now().strftime("%d/%m/%Y"),  # Data atual (geração da ordem)
+                    "cliente": orcamento_selecionado.get("Cliente", ""),
+                    "responsavel": "",
+                    "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                    "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                    "produto": orcamento_selecionado.get("Produto", ""),
+                    "quantidade": 2,  # Sempre 2 protótipos
+                    "descrição": "",
+                    "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                    "total": "",
+                    "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                    "validade": "",
+                    "prazo_de_entrega": "",
+                }
+                # Busca contato do cliente se possível
+                try:
+                    cliente_row = st.session_state.df_clientes[st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")]
+                    if not cliente_row.empty:
+                        proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                except Exception:
+                    pass
+                # Gera o PDF e oferece download
+                propostas_dir = "Propostas"
+                if not os.path.exists(propostas_dir):
+                    os.makedirs(propostas_dir, exist_ok=True)
+                ordem_path = os.path.join(
+                    propostas_dir,
+                    f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                )
+                generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                if os.path.exists(ordem_path):
+                    with open(ordem_path, "rb") as fpdf:
+                        st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path), key=f"download_ordem_{id_orcamento}")
     st.title("📜 Meu Histórico de Orçamentos")
     import os
     from generate_ordem_prototipo import generate_ordem_prototipo_pdf
@@ -478,13 +458,10 @@ def display_history_page():
                     with open(ordem_path, "rb") as fpdf:
                         st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path), key=f"download_ordem_{id_orcamento}")
 
-                # ...existing code for ajustes_json, ajustes_lista, etc...
-    else:
-        st.info("Nenhum orçamento encontrado para o seu usuário.")
+def render_component_selector(component_type: str, df_items: pd.DataFrame, paper_options: list) -> dict:
+    # ...existing code for ajustes_json, ajustes_lista, etc...
 
 # ...existing code...
-
-def render_component_selector(component_type: str, df_items: pd.DataFrame, paper_options: list) -> dict:
     """
     Renderiza um seletor genérico para componentes.
     A seção 'Personalizado' agora inicia os campos numéricos com 0.00.
