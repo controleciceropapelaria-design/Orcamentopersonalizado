@@ -278,11 +278,7 @@ def display_history_page():
             # Mostra status simples sem cor customizada
             st.markdown(f"<span style='font-weight:bold;font-size:1.1em;'>Status: {status}</span>", unsafe_allow_html=True)
 
-            # Botão para baixar o PDF da proposta, se existir
-            pdf_path = orcamento_selecionado.get("PropostaPDF", "")
-            if pdf_path and os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as fpdf:
-                    st.download_button("Baixar Proposta PDF", fpdf, file_name=os.path.basename(pdf_path), key=f"download_pdf_{id_orcamento}")
+            # ...botão de download removido do expander, pois já existe fora...
 
             # Regras de exibição dos botões
             # Pendente: Baixar, Editar, Excluir, Aprovar
@@ -390,7 +386,8 @@ def display_history_page():
                                 "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
                                 "produto": orcamento_selecionado.get("Produto", ""),
                                 "quantidade": 2,
-                                "descrição": orcamento_selecionado.get("descrição", ""),
+                                # Se não houver descrição, usa o nome do produto como descrição
+                                "descrição": orcamento_selecionado.get("descrição") or orcamento_selecionado.get("Produto", ""),
                                 "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
                                 "total": "",
                                 "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
@@ -743,7 +740,7 @@ def display_admin_panel():
 
                     btns = []
                     if status == "Pendente":
-                        btns = ["editar", "excluir", "aprovar"]
+                        btns = ["editar", "excluir", "aprovar", "ordem"]
                     elif status == "Aprovado":
                         btns = ["editar", "suspender", "finalizar", "ordem"]
                     elif status == "Suspenso":
