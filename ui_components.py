@@ -421,22 +421,78 @@ def _monta_descricao_prototipo(orcamento):
         selecoes = json.loads(selecoes_json)
     except Exception:
         selecoes = {}
-    descricao = []
+    # Estrutura de seções conforme o PDF
+    secoes = {
+        "Capa": [],
+        "Guarda": [],
+        "Miolo": [],
+        "Bola": [],
+        "ELASTICO": [],
+        "FITA DE CETIM": [],
+        "PAPELAO": [],
+        "Acabamento": []
+    }
+    import json
+    selecoes_json = orcamento.get("SelecoesJSON", "{}")
+    try:
+        selecoes = json.loads(selecoes_json)
+    except Exception:
+        selecoes = {}
+
+    # Agrupa os itens por seção
     for k, v in selecoes.items():
-        # Remove prefixos 'cd_', 'util_', 'sel' do nome do campo
-        k_clean = k.replace('cd_', '').replace('util_', '').replace('sel', '')
+        k_clean = k.replace('cd_', '').replace('util_', '').replace('sel', '').strip().capitalize()
         if isinstance(v, dict):
             for subk, subv in v.items():
-                # Remove 'Nenhum' da descrição
                 if str(subv).strip() != 'Nenhum':
-                    descricao.append(f"{k_clean} - {subk}: {subv}")
+                    # Decide a seção pelo nome do campo
+                    if 'capa' in k_clean.lower():
+                        secoes['Capa'].append(f"{subk}: {subv}")
+                    elif 'guarda' in k_clean.lower():
+                        secoes['Guarda'].append(f"{subk}: {subv}")
+                    elif 'miolo' in k_clean.lower():
+                        secoes['Miolo'].append(f"{subk}: {subv}")
+                    elif 'bola' in k_clean.lower():
+                        secoes['Bola'].append(f"{subk}: {subv}")
+                    elif 'elastico' in k_clean.lower():
+                        secoes['ELASTICO'].append(f"{subk}: {subv}")
+                    elif 'cetim' in k_clean.lower():
+                        secoes['FITA DE CETIM'].append(f"{subk}: {subv}")
+                    elif 'papelao' in k_clean.lower():
+                        secoes['PAPELAO'].append(f"{subk}: {subv}")
+                    elif 'acabamento' in k_clean.lower():
+                        secoes['Acabamento'].append(f"{subk}: {subv}")
         else:
             if str(v).strip() != 'Nenhum':
-                descricao.append(f"{k_clean}: {v}")
+                if 'capa' in k_clean.lower():
+                    secoes['Capa'].append(f"{k_clean}: {v}")
+                elif 'guarda' in k_clean.lower():
+                    secoes['Guarda'].append(f"{k_clean}: {v}")
+                elif 'miolo' in k_clean.lower():
+                    secoes['Miolo'].append(f"{k_clean}: {v}")
+                elif 'bola' in k_clean.lower():
+                    secoes['Bola'].append(f"{k_clean}: {v}")
+                elif 'elastico' in k_clean.lower():
+                    secoes['ELASTICO'].append(f"{k_clean}: {v}")
+                elif 'cetim' in k_clean.lower():
+                    secoes['FITA DE CETIM'].append(f"{k_clean}: {v}")
+                elif 'papelao' in k_clean.lower():
+                    secoes['PAPELAO'].append(f"{k_clean}: {v}")
+                elif 'acabamento' in k_clean.lower():
+                    secoes['Acabamento'].append(f"{k_clean}: {v}")
+
+    # Monta o texto final igual ao PDF
+    descricao_final = []
+    for secao, itens in secoes.items():
+        if itens:
+            descricao_final.append(f"{secao}:")
+            descricao_final.extend(itens)
+            descricao_final.append("")
+
     # Se não houver nada, retorna nome do produto
-    if not descricao:
+    if not descricao_final:
         return orcamento.get("Produto", "")
-    return "\n".join(descricao)
+    return "\n".join(descricao_final)
             # ...existing code for ajustes_json, ajustes_lista, etc...
 
 # ...existing code...
