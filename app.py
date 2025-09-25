@@ -797,16 +797,33 @@ def budget_page():
                     else:
                         st.warning("Não foi possível salvar a proposta PDF no GitHub.")
 
+
                 # --- GERAÇÃO DA ORDEM DE PROTÓTIPO ---
-                ordem_path = os.path.join(
-                    propostas_dir,
-                    f"OrdemPrototipo_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                )
-                # Removido: geração automática e botão de download da ordem de protótipo aqui
-                # generate_ordem_prototipo_pdf(proposal_data, ordem_path)
-                # if os.path.exists(ordem_path):
-                #     with open(ordem_path, "rb") as fpdf:
-                #         st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
+                st.markdown("---")
+                st.subheader("Ordem de Protótipo")
+                if 'observacao_prototipo' not in st.session_state:
+                    st.session_state['observacao_prototipo'] = ""
+                if st.button("Incluir Observação de Protótipo"):
+                    st.session_state['show_obs_prototipo'] = True
+                if st.session_state.get('show_obs_prototipo', False):
+                    obs = st.text_area("Observação para o Protótipo", value=st.session_state['observacao_prototipo'], key="obs_prototipo_textarea")
+                    if st.button("Salvar Observação do Protótipo"):
+                        st.session_state['observacao_prototipo'] = obs
+                        st.session_state['show_obs_prototipo'] = False
+                        st.success("Observação de protótipo salva!")
+
+                if st.button("Gerar Ordem de Protótipo PDF"):
+                    ordem_path = os.path.join(
+                        propostas_dir,
+                        f"OrdemPrototipo_{selected_client}_{selected_product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    )
+                    # Adiciona a observação de protótipo ao proposal_data
+                    proposal_data_ordem = proposal_data.copy()
+                    proposal_data_ordem['observacoes'] = st.session_state.get('observacao_prototipo', "")
+                    generate_ordem_prototipo_pdf(proposal_data_ordem, ordem_path)
+                    if os.path.exists(ordem_path):
+                        with open(ordem_path, "rb") as fpdf:
+                            st.download_button("Baixar Ordem de Protótipo PDF", fpdf, file_name=os.path.basename(ordem_path))
 
                 # --- Lógica de edição ou novo orçamento ---
                 editing_id = st.session_state.get('editing_id')
