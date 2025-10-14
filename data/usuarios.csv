@@ -2,6 +2,6 @@ usuario,senha_hashed,nome_completo,role,status
 João Victor,$2b$12$u8/6njSrzHt3XXmKIGu46esj6JHFgyUQ1NEOIhrIBdWET0RsWZV66,João Victor Cardoso Protazio,admin,ativo
 Monica,$2b$12$.ZCYKupATtbay453inyf9.di.HRSbREfK5ayH6/14zRb6E8jp33c6,Monica Ribeiro,admin,ativo
 Manuh,$2b$12$26URmvesbo2bH3wo863uHOHgCXX9fF4IvAgnQWdSiG2LaXZTXAiOC,Emanuela caroline,user,ativo
-Rafael,$2b$12$cNhv8qQ4aMQxjZYs.p6S0uFd1yVnsqDutNNolY4oXf3hqQqQSMvA2,Rafael Diniz,user,ativo
+Rafael,$2b$12$cNhv8qQ4aMQxjZYs.p6S0uFd1yVnsqDutNNolY4oXf3hqQqQSMvA2,Rafael Diniz,orcamentista,ativo
 Aline,$2b$12$CJydoAwFOGHgi37IKYmGJOYVmTZ9kOIHf01ZhaWvKOxtYbLEVAIay,Aline Souza,orcamentista,ativo
 ELICORREA,$2b$12$NOj0GAv3fsAHO3g8VyzEvuiGNEBPy/10rbiYondg1g/D5iHKIjJZC,ELIANA CORREA,orcamentista,ativo
