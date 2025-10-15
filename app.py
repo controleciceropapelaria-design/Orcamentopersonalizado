@@ -500,84 +500,9 @@ def budget_page():
                     or "FORRO" in item["name"]
                     or "DIVISORIA" in item["name"]
                 ):
-                    comp_row = None
-                    if "Miolo" in item["name"]:
-                        df_comp = df_miolos
-                        comp_col = "Miolo"
-                        comp_nome = "Miolo"
-                    elif "Bolsa" in item["name"]:
-                        df_comp = df_bolsas
-                        comp_col = "Bolsa"
-                        comp_nome = "Bolsa"
-                    elif "Divisória" in item["name"]:
-                        df_comp = df_divisorias
-                        comp_col = "Divisoria"
-                        comp_nome = "Divisoria"
-                    elif "Adesivo" in item["name"]:
-                        df_comp = df_adesivos
-                        comp_col = "Adesivo"
-                        comp_nome = "Adesivo"
-                    elif "GUARDA FRENTE" in item["name"] or "Forro" in item["name"]:
-                        df_comp = df_guarda_forro
-                        comp_col = "Item"
-                        comp_nome = "Forro" if "Forro" in item["name"] else "Guarda"
-                    elif "GUARDA VERSO" in item["name"]:
-                        df_comp = df_guarda_verso
-                        comp_col = "GuardaVerso"
-                        comp_nome = "Guarda"
-                    elif "FORRO" in item["name"]:
-                        df_comp = df_guarda_forro
-                        comp_col = "Item"
-                        comp_nome = "Forro"
-                    elif "MIOLO" in item["name"]:
-                        df_comp = df_miolos
-                        comp_col = "Miolo"
-                        comp_nome = "Miolo"
-                    elif "BOLSA" in item["name"]:
-                        df_comp = df_bolsas
-                        comp_col = "Bolsa"
-                        comp_nome = "Bolsa"
-                    elif "Divisoria" in item["name"]:            
-                        df_comp = df_divisorias
-                        comp_col = "Divisoria"
-                        comp_nome = "Divisoria"
-                    elif "ADESIVO" in item["name"]:
-                        df_comp = df_adesivos
-                        comp_col = "Adesivo"
-                        comp_nome = "Adesivo"    
-                    elif "FORRO" in item["name"]:
-                        df_comp = df_guarda_forro
-                        comp_col = "Item"
-                        comp_nome = "Forro"
-                    elif "DIVISORIA" in item["name"]:
-                        df_comp = df_divisorias
-                        comp_col = "Divisoria"
-                        comp_nome = "Divisoria"    
-                    else:
-                        df_comp = None
-                        comp_col = None
-                        comp_nome = None
-
-                    if df_comp is not None and comp_col is not None and comp_nome is not None:
-                        try:
-                            comp_row = df_comp[df_comp[comp_col].str.lower().str.contains(comp_nome.lower())].iloc[0]
-                        except Exception:
-                            comp_row = None
-
-                    if comp_row is not None and "QuantidadePapel" in comp_row and "QuantidadeAprovada" in comp_row:
-                        qtd_papel = comp_row["QuantidadePapel"]
-                        qtd_aprovada = comp_row["QuantidadeAprovada"]
-                        try:
-                            qtd_papel = float(qtd_papel)
-                            qtd_aprovada = float(qtd_aprovada)
-                        except Exception:
-                            qtd_papel = qtd_aprovada = None
-                        if qtd_papel and qtd_aprovada:
-                            quantidade = (qtd_papel / qtd_aprovada) * budget_quantity
-                        else:
-                            quantidade = budget_quantity
-                    else:
-                        quantidade = budget_quantity
+                    # Para componentes padrão (não personalizados), a quantidade é sempre a quantidade do orçamento
+                    # O cálculo complexo só deve ser aplicado para itens personalizados
+                    quantidade = budget_quantity
                 # Aviamentos, incluindo Rebite
                 else:
                     def normalize(s):
