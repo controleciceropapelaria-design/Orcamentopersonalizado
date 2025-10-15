@@ -585,10 +585,19 @@ def budget_page():
             comissao_promotor = st.number_input("Comissão Promotor (%)", min_value=0.0, value=1.7, step=0.1)
         
         total_comissao_percent = comissao_vendedor + comissao_promotor
-        custo_com_comissao = custo_ajustado * (1 + total_comissao_percent / 100)
-        preco_venda = custo_com_comissao * markup
-        st.metric("Custo Final (Ajustado + Comissões)", f"R$ {custo_com_comissao:,.2f}".replace('.', ','))
-        st.metric("Preço de Venda Unitário Sugerido", f"R$ {preco_venda:,.2f}".replace('.', ','))
+        # CORREÇÃO: As comissões não devem alterar o custo, apenas o preço de venda
+        preco_base = custo_ajustado * markup  # Preço base sem comissões
+        
+        # Validação para evitar divisão por zero ou valores inválidos
+        if total_comissao_percent >= 100:
+            st.error("⚠️ Total de comissões não pode ser 100% ou mais!")
+            preco_venda = preco_base
+        else:
+            preco_venda = preco_base / (1 - total_comissao_percent / 100)  # Preço final incluindo comissões
+        
+        # Exibe o custo inalterado e o preço de venda com comissões
+        st.metric("Custo Final (Inalterado)", f"R$ {custo_ajustado:,.2f}".replace('.', ','))
+        st.metric("Preço de Venda Unitário Sugerido (com comissões)", f"R$ {preco_venda:,.2f}".replace('.', ','))
          # ADICIONADO: Campo de Observações
         observacoes = st.text_area("Observações para a Proposta e Protótipo:", height=150)
         
