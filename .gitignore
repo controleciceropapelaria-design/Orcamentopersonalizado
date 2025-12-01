@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+
+# Environments
+.venv/
+.env
+
+# OS/Editor
+.DS_Store
+.vscode/
+
+# Backups/Logs
+*.bak*
+*.log
+
+# Generated PDFs and prototypes
+Propostas/
+Prototipos/
+
+# Jupyter
+*.ipynb_checkpoints/
+
+# Temp
+.tmp/
