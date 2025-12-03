@@ -29,7 +29,12 @@ def login_user(username, password) -> tuple[bool, str]:
     if users_df is None or users_df.empty:
         return False, "Nenhum usuário cadastrado."
 
-    user_record = users_df[users_df["usuario"] == username]
+    # Normaliza ambos para comparação robusta (strip + casefold)
+    uname_norm = (username or "").strip().casefold()
+    users_df = users_df.copy()
+    users_df["_usuario_norm"] = users_df["usuario"].astype(str).str.strip().str.casefold()
+
+    user_record = users_df[users_df["_usuario_norm"] == uname_norm]
 
     if user_record.empty:
         return False, "Usuário ou senha incorretos."
@@ -44,7 +49,8 @@ def login_user(username, password) -> tuple[bool, str]:
     if verify_password(password, user_data["senha_hashed"]):
         # Se o login for bem-sucedido, atualiza o estado da sessão
         st.session_state.logged_in = True
-        st.session_state.username = username
+        # Guarda o nome de usuário exatamente como cadastrado
+        st.session_state.username = user_data["usuario"]
         st.session_state.full_name = user_data["nome_completo"]
         st.session_state.role = user_data["role"]
         return True, "Login bem-sucedido."
@@ -57,12 +63,17 @@ def register_user(username, password, full_name) -> tuple[bool, str]:
     Registra um novo usuário com status 'pendente' e role 'user'.
     """
     users_df = st.session_state.df_usuarios
-    if username in users_df["usuario"].values:
+    # Impede duplicidades ignorando maiúsculas/minúsculas e espaços
+    uname_norm = (username or "").strip().casefold()
+    if not uname_norm:
+        return False, "Informe um nome de usuário válido."
+    existing_norm = users_df.get("usuario", pd.Series(dtype=str)).astype(str).str.strip().str.casefold()
+    if uname_norm in set(existing_norm.values):
         return False, "Usuário já existe."
 
     hashed = hash_password(password)
     new_user = pd.DataFrame([{
-        "usuario": username,
+        "usuario": username.strip(),
         "senha_hashed": hashed,
         "nome_completo": full_name,
         "role": "user",      # Role padrão

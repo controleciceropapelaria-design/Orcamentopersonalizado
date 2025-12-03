@@ -173,11 +173,7 @@ def display_client_registration_form():
                 new_client_df = pd.DataFrame([client_data])[config.COLUNAS_CLIENTES]
                 st.session_state.df_clientes = pd.concat([st.session_state.df_clientes, new_client_df], ignore_index=True)[config.COLUNAS_CLIENTES]
                 storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
-                token = storage.get_github_token()
-                if token:
-                    storage.save_clientes_to_github(st.session_state.df_clientes, token)
-                else:
-                    st.info("Token do GitHub não configurado. Cliente salvo apenas localmente.")
+                storage.save_clientes_to_github(st.session_state.df_clientes, st.secrets["github_token"])
                 st.success(f"Cliente '{nome}' cadastrado com sucesso!")
                 st.session_state.cep_data = {} # Limpa o cache do CEP
 
@@ -311,125 +307,137 @@ def display_history_page():
                         if st.button("Editar esta versão", key=f"editar_{id_orcamento}_details"):
                             selecoes = json.loads(versoes[versao_idx]["data"].get("SelecoesJSON", "{}"))
                             for key, value in selecoes.items():
-                                st.session_state[key] = value
-                            st.session_state['selected_client'] = versoes[versao_idx]["data"].get('Cliente', '')
-                            try:
-                                st.session_state['budget_quantity'] = int(versoes[versao_idx]["data"].get('Quantidade', 15000))
-                            except Exception:
-                                st.session_state['budget_quantity'] = 15000
-                            st.session_state['sel_produto'] = versoes[versao_idx]["data"].get('Produto', '')
-                            for extra_key in [
-                                'selected_laminacao', 'selected_hot_stamping', 'selected_silk',
-                                'sel_capa_papel', 'sel_capa_impressao', 'sel_capa_couro', 'sel_produto'
-                            ]:
-                                if extra_key in selecoes:
-                                    st.session_state[extra_key] = selecoes[extra_key]
-                            st.session_state['ajustes'] = json.loads(versoes[versao_idx]["data"].get('AjustesJSON', '[]'))
-                            st.session_state['editing_id'] = versoes[versao_idx]["data"].get('ID', '')
-                            st.session_state['edit_loaded'] = True
-                            st.session_state['page'] = "Orçamento"
-                            st.success(f"Versão {versao_idx+1} carregada para edição!")
-                            st.rerun()
-                        # ...estilo customizado removido: botão editar...
-                    elif btn == "excluir":
-                        if st.button("Excluir Orçamento", key=f"excluir_{id_orcamento}_details"):
-                            idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                            st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
-                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.delete_orcamento_from_github(token)
-                            else:
-                                st.info("Token do GitHub não configurado. Remoção no GitHub não executada.")
-                            st.success(f"Orçamento {id_orcamento} excluído com sucesso!")
-                            st.rerun()
-                        # ...estilo customizado removido: botão excluir...
-                    elif btn == "aprovar":
-                        if st.button("Aprovar Orçamento", key=f"aprovar_{id_orcamento}_details"):
-                            idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                            st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
-                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
-                            st.success(f"Orçamento {id_orcamento} aprovado!")
-                            st.rerun()
-                        # ...estilo customizado removido: botão aprovar...
-                    elif btn == "suspender":
-                        if st.button("Suspender Orçamento", key=f"suspender_{id_orcamento}_details"):
-                            idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                            st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
-                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
-                            st.success(f"Orçamento {id_orcamento} suspenso!")
-                            st.rerun()
-                        # ...estilo customizado removido: botão suspender...
-                    elif btn == "finalizar":
-                        if st.button("Finalizar Orçamento", key=f"finalizar_{id_orcamento}_details"):
-                            idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento].index[0]
-                            st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
-                            storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
-                            st.success(f"Orçamento {id_orcamento} finalizado!")
-                            st.rerun()
-                        # ...estilo customizado removido: botão finalizar...
-                    elif btn == "ordem":
-                        if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento}"):
-                            from generate_ordem_prototipo import generate_ordem_prototipo_pdf
-                            import os
-                            from datetime import datetime
-                            proposta_data = {
-                                "data": datetime.now().strftime("%d/%m/%Y"),
-                                "cliente": orcamento_selecionado.get("Cliente", ""),
-                                "responsavel": "",
-                                "numero_orcamento": orcamento_selecionado.get("ID", ""),
-                                "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
-                                "produto": orcamento_selecionado.get("Produto", ""),
-                                "quantidade": 2,
-                                "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
-                                "total": "",
-                                "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
-                                "validade": "",
-                                "prazo_de_entrega": "",
-                            }
-                            proposta_data["descrição"] = (
-                                orcamento_selecionado.get("descrição") if orcamento_selecionado.get("descrição") not in [None, "", "nan"]
-                                else _monta_descricao_prototipo(orcamento_selecionado)
+                                elif btn == "ordem":
+                                    # Two-step flow: clicking only opens the full-width observation area below the buttons
+                                    botao_key = f"gerar_ordem_prototipo_{id_orcamento}"
+                                    observ_key = f"observacao_ordem_{id_orcamento}"
+
+                                    if st.button("Gerar Ordem de Protótipo", key=botao_key):
+                                        st.session_state[f"show_observ_{id_orcamento}"] = True
+                                    col_idx += 1
+
+                        # After rendering all buttons, if the observation area was requested, render it full-width here
+                        if st.session_state.get(f"show_observ_{id_orcamento}", False):
+                            MAX_CHARS = 1000
+                            HEIGHT_PX = 180
+                            observ_key = f"observacao_ordem_{id_orcamento}"
+                            st.info("Insira abaixo a observação para esta ordem (opcional) e clique em 'Confirmar e Gerar PDF'.")
+                            st.session_state.setdefault(observ_key, "")
+                            # Full-width text area
+                            st.text_area(
+                                "Observação para Produção:",
+                                value=st.session_state.get(observ_key, ""),
+                                key=observ_key,
+                                height=HEIGHT_PX,
+                                max_chars=MAX_CHARS,
+                                placeholder="Ex.: Verificar acabamento, usar fita 3M na dobra...",
                             )
-                            try:
-                                cliente_row = st.session_state.df_clientes[
-                                    st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
-                                ]
-                                if not cliente_row.empty:
-                                    proposta_data["responsavel"] = cliente_row["Contato"].values[0]
-                            except Exception:
-                                pass
-                            propostas_dir = "Propostas"
-                            if not os.path.exists(propostas_dir):
-                                os.makedirs(propostas_dir, exist_ok=True)
-                            ordem_path = os.path.join(
-                                propostas_dir,
-                                f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                            )
-                            generate_ordem_prototipo_pdf(proposta_data, ordem_path)
-                            if os.path.exists(ordem_path):
-                                with open(ordem_path, "rb") as fpdf:
-                                    st.download_button(
-                                        "Baixar Ordem de Protótipo PDF",
-                                        fpdf,
-                                        file_name=os.path.basename(ordem_path),
-                                        key=f"download_ordem_{id_orcamento}"
-                                    )
+                            current_len = len(st.session_state.get(observ_key, "") or "")
+                            st.caption(f"{current_len} / {MAX_CHARS} caracteres")
+                            if st.button("Confirmar e Gerar PDF", key=f"confirm_ordem_{id_orcamento}"):
+                                from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                                import os
+                                from datetime import datetime
+                                proposta_data = {
+                                    "data": datetime.now().strftime("%d/%m/%Y"),
+                                    "cliente": orcamento_selecionado.get("Cliente", ""),
+                                    "responsavel": "",
+                                    "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                                    "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                                    "produto": orcamento_selecionado.get("Produto", ""),
+                                    "quantidade": 2,
+                                    "descrição": None,
+                                    "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                                    "total": "",
+                                    "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                                    "validade": "",
+                                    "prazo_de_entrega": "",
+                                }
+                                proposta_data["descrição"] = (
+                                    orcamento_selecionado.get("descrição") if orcamento_selecionado.get("descrição") not in [None, "", "nan"]
+                                    else _monta_descricao_prototipo(orcamento_selecionado)
+                                )
+                                try:
+                                    cliente_row = st.session_state.df_clientes[
+                                        st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
+                                    ]
+                                    if not cliente_row.empty:
+                                        proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                                except Exception:
+                                    pass
+                                proposta_data["observacao"] = st.session_state.get(observ_key, "")
+                                propostas_dir = "Propostas"
+                                if not os.path.exists(propostas_dir):
+                                    os.makedirs(propostas_dir, exist_ok=True)
+                                ordem_path = os.path.join(
+                                    propostas_dir,
+                                    f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data.get('produto','')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                )
+                                generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                                st.session_state[f"show_observ_{id_orcamento}"] = False
+                                if os.path.exists(ordem_path):
+                                    with open(ordem_path, "rb") as fpdf:
+                                        st.download_button(
+                                            "Baixar Ordem de Protótipo PDF",
+                                            fpdf,
+                                            file_name=os.path.basename(ordem_path),
+                                            key=f"download_ordem_{id_orcamento}"
+                                        )
+                                    max_chars=MAX_CHARS,
+                                    placeholder="Ex.: Verificar acabamento, usar fita 3M na dobra...",
+                                )
+                            with col_aux:
+                                current_len = len(st.session_state.get(observ_key, "") or "")
+                                st.caption(f"{current_len} / {MAX_CHARS} caracteres")
+                            if st.button("Confirmar e Gerar PDF", key=f"confirm_ordem_{id_orcamento}"):
+                                from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                                import os
+                                from datetime import datetime
+                                proposta_data = {
+                                    "data": datetime.now().strftime("%d/%m/%Y"),
+                                    "cliente": orcamento_selecionado.get("Cliente", ""),
+                                    "responsavel": "",
+                                    "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                                    "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                                    "produto": orcamento_selecionado.get("Produto", ""),
+                                    "quantidade": 2,
+                                    "descrição": None,
+                                    "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                                    "total": "",
+                                    "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                                    "validade": "",
+                                    "prazo_de_entrega": "",
+                                }
+                                proposta_data["descrição"] = (
+                                    orcamento_selecionado.get("descrição") if orcamento_selecionado.get("descrição") not in [None, "", "nan"]
+                                    else _monta_descricao_prototipo(orcamento_selecionado)
+                                )
+                                try:
+                                    cliente_row = st.session_state.df_clientes[
+                                        st.session_state.df_clientes["Nome"] == orcamento_selecionado.get("Cliente", "")
+                                    ]
+                                    if not cliente_row.empty:
+                                        proposta_data["responsavel"] = cliente_row["Contato"].values[0]
+                                except Exception:
+                                    pass
+                                proposta_data["observacao"] = st.session_state.get(observ_key, "")
+                                propostas_dir = "Propostas"
+                                if not os.path.exists(propostas_dir):
+                                    os.makedirs(propostas_dir, exist_ok=True)
+                                ordem_path = os.path.join(
+                                    propostas_dir,
+                                    f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data.get('produto','')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                )
+                                generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                                st.session_state[f"show_observ_{id_orcamento}"] = False
+                                if os.path.exists(ordem_path):
+                                    with open(ordem_path, "rb") as fpdf:
+                                        st.download_button(
+                                            "Baixar Ordem de Protótipo PDF",
+                                            fpdf,
+                                            file_name=os.path.basename(ordem_path),
+                                            key=f"download_ordem_{id_orcamento}"
+                                        )
                             col_idx += 1
 
 # Função utilitária para montar descrição técnica do protótipo
@@ -709,11 +717,7 @@ def display_admin_panel():
                             st.session_state.df_usuarios.loc[index, 'status'] = 'ativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
                             # Salva no GitHub após aprovar
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_usuarios_to_github(st.session_state.df_usuarios, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.success(f"Usuário {user['usuario']} aprovado!")
                             st.rerun()
                 with col2:
@@ -723,11 +727,7 @@ def display_admin_panel():
                         if st.button("⬆️ Promover a Orcamentista", key=f"promote_orc_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'role'] = 'orcamentista'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_usuarios_to_github(st.session_state.df_usuarios, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.success(f"Usuário {user['usuario']} promovido a Orcamentista!")
                             st.rerun()
                     elif user['role'] == 'orcamentista':
@@ -736,22 +736,14 @@ def display_admin_panel():
                             if st.button("⬆️ Promover a Admin", key=f"promote_adm_{user['usuario']}"):
                                 st.session_state.df_usuarios.loc[index, 'role'] = 'admin'
                                 storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
-                                token = storage.get_github_token()
-                                if token:
-                                    storage.save_usuarios_to_github(st.session_state.df_usuarios, token)
-                                else:
-                                    st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                                storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                                 st.success(f"Usuário {user['usuario']} promovido a Admin!")
                                 st.rerun()
                         with c2:
                             if st.button("⬇️ Rebaixar para Usuário", key=f"demote_usr_{user['usuario']}"):
                                 st.session_state.df_usuarios.loc[index, 'role'] = 'user'
                                 storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
-                                token = storage.get_github_token()
-                                if token:
-                                    storage.save_usuarios_to_github(st.session_state.df_usuarios, token)
-                                else:
-                                    st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                                storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                                 st.warning(f"Usuário {user['usuario']} rebaixado para Usuário.")
                                 st.rerun()
                 with col3:
@@ -760,11 +752,7 @@ def display_admin_panel():
                         if st.button("❌ Desativar", key=f"deactivate_{user['usuario']}"):
                             st.session_state.df_usuarios.loc[index, 'status'] = 'inativo'
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.save_usuarios_to_github(st.session_state.df_usuarios, token)
-                            else:
-                                st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                            storage.save_usuarios_to_github(st.session_state.df_usuarios, st.secrets["github_token"])
                             st.warning(f"Usuário {user['usuario']} desativado.")
                             st.rerun()
                 with col4:
@@ -773,11 +761,7 @@ def display_admin_panel():
                         if st.button("Excluir", key=f"delete_{user['usuario']}"):
                             st.session_state.df_usuarios = st.session_state.df_usuarios.drop(index=index).reset_index(drop=True)
                             storage.save_csv(st.session_state.df_usuarios, config.USERS_FILE)
-                            token = storage.get_github_token()
-                            if token:
-                                storage.delete_usuario_from_github(user['usuario'], token)
-                            else:
-                                st.info("Token do GitHub não configurado. Remoção no GitHub não executada.")
+                            storage.delete_usuario_from_github(user['usuario'], st.secrets["github_token"])
                             st.warning(f"Usuário {user['usuario']} excluído.")
                             st.rerun()            
                 st.divider()
@@ -829,11 +813,7 @@ def display_admin_panel():
                         st.session_state.df_clientes = st.session_state.df_clientes.drop(index=client_index).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_clientes, config.CLIENTES_FILE)
                         # Exclui do GitHub e reenvia o CSV atualizado
-                        token = storage.get_github_token()
-                        if token:
-                            storage.delete_cliente_from_github(selected_client_name, token)
-                        else:
-                            st.info("Token do GitHub não configurado. Remoção no GitHub não executada.")
+                        storage.delete_cliente_from_github(selected_client_name, st.secrets["github_token"])
                         st.warning(f"Cliente '{selected_client_name}' foi excluído.")
                         st.rerun()
 
@@ -876,11 +856,7 @@ def display_admin_panel():
                     if st.button("Excluir Template Permanentemente", type="primary"):
                         st.session_state.df_templates = st.session_state.df_templates.drop(index=template_index).reset_index(drop=True)
                         storage.save_csv(st.session_state.df_templates, config.TEMPLATES_FILE)
-                        token = storage.get_github_token()
-                        if token:
-                            storage.delete_template_from_github(selected_template_name, token)
-                        else:
-                            st.info("Token do GitHub não configurado. Remoção no GitHub não executada.")
+                        storage.delete_template_from_github(selected_template_name, st.secrets["github_token"])
                         st.warning(f"Template '{selected_template_name}' foi excluído.")
                         st.rerun()
 
@@ -985,11 +961,7 @@ def display_admin_panel():
                                     idx_del = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
                                     st.session_state.df_orcamentos = st.session_state.df_orcamentos.drop(idx_del).reset_index(drop=True)
                                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    token = storage.get_github_token()
-                                    if token:
-                                        storage.delete_orcamento_from_github(token)
-                                    else:
-                                        st.info("Token do GitHub não configurado. Remoção no GitHub não executada.")
+                                    storage.delete_orcamento_from_github(st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} excluído com sucesso!")
                                     st.rerun()
                                 # ...estilo customizado removido: botão excluir...
@@ -998,11 +970,7 @@ def display_admin_panel():
                                     idx_apr = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
                                     st.session_state.df_orcamentos.loc[idx_apr, "StatusOrcamento"] = "Aprovado"
                                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    token = storage.get_github_token()
-                                    if token:
-                                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                                    else:
-                                        st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} aprovado!")
                                     st.rerun()
                                 # ...estilo customizado removido: botão aprovar...
@@ -1011,11 +979,7 @@ def display_admin_panel():
                                     idx_sus = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
                                     st.session_state.df_orcamentos.loc[idx_sus, "StatusOrcamento"] = "Suspenso"
                                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    token = storage.get_github_token()
-                                    if token:
-                                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                                    else:
-                                        st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} suspenso!")
                                     st.rerun()
                                 # ...estilo customizado removido: botão suspender...
@@ -1024,17 +988,83 @@ def display_admin_panel():
                                     idx_fin = st.session_state.df_orcamentos[st.session_state.df_orcamentos['ID'] == id_orcamento_admin].index[0]
                                     st.session_state.df_orcamentos.loc[idx_fin, "StatusOrcamento"] = "Finalizado"
                                     storage.save_csv(st.session_state.df_orcamentos, config.ORCAMENTOS_FILE)
-                                    token = storage.get_github_token()
-                                    if token:
-                                        storage.save_orcamentos_to_github(st.session_state.df_orcamentos, token)
-                                    else:
-                                        st.info("Token do GitHub não configurado. Alteração salva apenas localmente.")
+                                    storage.save_orcamentos_to_github(st.session_state.df_orcamentos, st.secrets["github_token"])
                                     st.success(f"Orçamento {id_orcamento_admin} finalizado!")
                                     st.rerun()
                                 # ...estilo customizado removido: botão finalizar...
                             elif btn == "ordem":
-                                # ...estilo customizado removido: botão ordem...
-                                if st.button("Gerar Ordem de Protótipo", key=f"gerar_ordem_prototipo_{id_orcamento_admin}"):
+                                # Two-step flow for admin panel: collect observation then generate
+                                botao_key = f"gerar_ordem_prototipo_{id_orcamento_admin}"
+                                observ_key = f"observacao_ordem_{id_orcamento_admin}"
+
+                                if st.button("Gerar Ordem de Protótipo", key=botao_key):
+                                    st.session_state[f"show_observ_{id_orcamento_admin}"] = True
+
+                                if st.session_state.get(f"show_observ_{id_orcamento_admin}", False):
+                                    st.info("Insira abaixo a observação para esta ordem (opcional) e clique em 'Confirmar e Gerar PDF'.")
+                                    st.session_state.setdefault(observ_key, "")
+                                    # Do not assign the widget return into session_state directly — the widget updates session_state by key
+                                    # Control width via columns ratio and height via the `height` parameter.
+                                    MAX_CHARS = 1000
+                                    HEIGHT_PX = 140
+                                    col_obs, col_aux = st.columns([3, 1])
+                                    with col_obs:
+                                        st.text_area(
+                                            "Observação para Produção:",
+                                            value=st.session_state.get(observ_key, ""),
+                                            key=observ_key,
+                                            height=HEIGHT_PX,
+                                            max_chars=MAX_CHARS,
+                                            placeholder="Ex.: Verificar acabamento, usar fita 3M na dobra...",
+                                        )
+                                    with col_aux:
+                                        current_len = len(st.session_state.get(observ_key, "") or "")
+                                        st.caption(f"{current_len} / {MAX_CHARS} caracteres")
+                                    if st.button("Confirmar e Gerar PDF", key=f"confirm_ordem_{id_orcamento_admin}"):
+                                        from generate_ordem_prototipo import generate_ordem_prototipo_pdf
+                                        import os
+                                        from datetime import datetime
+                                        # Garante que orcamento_selecionado está definido
+                                        orcamento_selecionado = orcamento_completo[orcamento_completo['ID'] == id_orcamento_admin].iloc[0]
+                                        proposta_data = {
+                                            "data": datetime.now().strftime("%d/%m/%Y"),
+                                            "cliente": orcamento_selecionado.get("Cliente", ""),
+                                            "responsavel": "",
+                                            "numero_orcamento": orcamento_selecionado.get("ID", ""),
+                                            "versao_orcamento": orcamento_selecionado.get("VersoesOrcamento", 1),
+                                            "produto": orcamento_selecionado.get("Produto", ""),
+                                            "quantidade": 2,
+                                            "descrição": None,  # será preenchido abaixo
+                                            "Unitario": orcamento_selecionado.get("PrecoVenda", ""),
+                                            "total": "",
+                                            "atendente": orcamento_selecionado.get("NomeOrcamentista", ""),
+                                            "validade": "",
+                                            elif btn == "ordem":
+                                                # Two-step flow for admin panel: clicking only opens the full-width observation area below the buttons
+                                                botao_key = f"gerar_ordem_prototipo_{id_orcamento_admin}"
+                                                observ_key = f"observacao_ordem_{id_orcamento_admin}"
+
+                                                if st.button("Gerar Ordem de Protótipo", key=botao_key):
+                                                    st.session_state[f"show_observ_{id_orcamento_admin}"] = True
+
+                            # Admin: render full-width observation area if requested
+                            if st.session_state.get(f"show_observ_{id_orcamento_admin}", False):
+                                MAX_CHARS = 1000
+                                HEIGHT_PX = 180
+                                observ_key = f"observacao_ordem_{id_orcamento_admin}"
+                                st.info("Insira abaixo a observação para esta ordem (opcional) e clique em 'Confirmar e Gerar PDF'.")
+                                st.session_state.setdefault(observ_key, "")
+                                st.text_area(
+                                    "Observação para Produção:",
+                                    value=st.session_state.get(observ_key, ""),
+                                    key=observ_key,
+                                    height=HEIGHT_PX,
+                                    max_chars=MAX_CHARS,
+                                    placeholder="Ex.: Verificar acabamento, usar fita 3M na dobra...",
+                                )
+                                current_len = len(st.session_state.get(observ_key, "") or "")
+                                st.caption(f"{current_len} / {MAX_CHARS} caracteres")
+                                if st.button("Confirmar e Gerar PDF", key=f"confirm_ordem_{id_orcamento_admin}"):
                                     from generate_ordem_prototipo import generate_ordem_prototipo_pdf
                                     import os
                                     from datetime import datetime
@@ -1067,14 +1097,16 @@ def display_admin_panel():
                                             proposta_data["responsavel"] = cliente_row["Contato"].values[0]
                                     except Exception:
                                         pass
+                                    proposta_data["observacao"] = st.session_state.get(observ_key, "")
                                     propostas_dir = "Propostas"
                                     if not os.path.exists(propostas_dir):
                                         os.makedirs(propostas_dir, exist_ok=True)
                                     ordem_path = os.path.join(
                                         propostas_dir,
-                                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data['produto']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                        f"OrdemPrototipo_{proposta_data['cliente']}_{proposta_data.get('produto','')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                                     )
                                     generate_ordem_prototipo_pdf(proposta_data, ordem_path)
+                                    st.session_state[f"show_observ_{id_orcamento_admin}"] = False
                                     if os.path.exists(ordem_path):
                                         with open(ordem_path, "rb") as fpdf:
                                             st.download_button(

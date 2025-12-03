@@ -11,6 +11,13 @@ from pandas.errors import EmptyDataError # <--- ADICIONE ESTA LINHA
 import requests
 import base64
 
+def get_github_token():
+    """Retorna o token do GitHub via st.secrets ou None se não configurado."""
+    try:
+        return st.secrets["github_token"]
+    except Exception:
+        return None
+
 def load_csv(file_path: str, columns: list) -> pd.DataFrame:
     """
     Carrega um arquivo CSV. Se não existir, cria um com as colunas especificadas.

@@ -1,4 +1,5 @@
 from fpdf import FPDF
+import os
 
 def get_multicell_height(pdf, w, h, text):
     # Cria uma página temporária para calcular a altura
@@ -18,10 +19,18 @@ def generate_proposal_pdf(proposal_data, output_path):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Logo (ajustada para mais perto do topo)
-    logo_path = "logo_cicero.png"
+    # Logo (ajustada para mais perto do topo) - caminho robusto
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    logo_candidates = [
+        os.path.join(base_dir, "logo_cicero.png"),
+        os.path.join(base_dir, "data", "logo_cicero.png"),
+    ]
+    logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
     if logo_path:
-        pdf.image(logo_path, x=80, y=6, w=60)
+        try:
+            pdf.image(logo_path, x=80, y=6, w=60)
+        except Exception:
+            pass
 
     # Cabeçalho (ajustado para mais próximo do topo)
     pdf.set_font("Times", size=9)

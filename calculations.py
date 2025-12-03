@@ -254,12 +254,10 @@ def calculate_hot_stamping_cost(
         return {"total_cost_unit": 0, "details": hot_stamping_type, "error": None}
 
     # --- LÓGICA CORRIGIDA AQUI ---
-    # Se a quantidade for 1000 ou menos, o custo total é o valor base fixo.
-    if budget_quantity <= 1000:
-        total_cost = cost_per_thousand
-    # Se for maior que 1000, o custo é proporcional à quantidade total.
-    else:
-        total_cost = (budget_quantity / 1000) * cost_per_thousand
+    # Calcular por milheiro: 2.000 = 2 milheiros (arredondando para cima)
+    from math import ceil
+    milheiros = ceil(budget_quantity / 1000)
+    total_cost = milheiros * cost_per_thousand
     
     # O custo unitário é sempre o custo total dividido pela quantidade.
     cost_per_unit = total_cost / budget_quantity

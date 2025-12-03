@@ -4,15 +4,12 @@ Módulo de configuração centralizado para a aplicação Orçamento Pro.
 Armazena constantes, caminhos de arquivo, URLs e mapeamentos para
 evitar "valores mágicos" espalhados pelo código.
 """
-import os
 # ================== CAMINHOS DOS ARQUIVOS LOCAIS ==================
-# Garante caminhos ABSOLUTOS baseados no diretório deste arquivo (raiz do projeto)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-USERS_FILE = os.path.join(DATA_DIR, "usuarios.csv")
-CLIENTES_FILE = os.path.join(DATA_DIR, "clientes.csv")
-ORCAMENTOS_FILE = os.path.join(DATA_DIR, "orcamentos_novo.csv")
-TEMPLATES_FILE = os.path.join(DATA_DIR, "templates.csv")
+DATA_DIR = "data"
+USERS_FILE = f"{DATA_DIR}/usuarios.csv"
+CLIENTES_FILE = f"{DATA_DIR}/clientes.csv"
+ORCAMENTOS_FILE = f"{DATA_DIR}/orcamentos_novo.csv"
+TEMPLATES_FILE = f"{DATA_DIR}/templates.csv"
 
 # ================== COLUNAS DOS ARQUIVOS CSV ==================
 # Colunas atualizadas para incluir o sistema de aprovação de usuários
